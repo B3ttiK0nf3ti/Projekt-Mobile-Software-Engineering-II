@@ -1,8 +1,9 @@
 package com.iu.boardgamerapp.ui.components
 
 import BoxWithBorder
-import ChatDialog
+import com.iu.boardgamerapp.ui.ChatActivity
 import GameSelectionDialog
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,13 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.iu.boardgamerapp.ui.MainViewModel
 import com.iu.boardgamerapp.ui.UserNameInputDialog
-
 
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
@@ -36,14 +40,20 @@ fun MainScreen(viewModel: MainViewModel) {
     val selectedGame by viewModel.selectedGame.observeAsState("")
     val rating by viewModel.rating.observeAsState(0)
     val showDialog by viewModel.showGameSelectionDialog.observeAsState(false)
-    val showChatDialog by viewModel.showChatDialog.observeAsState(false)
-    val chatMessages by viewModel.chatMessages.observeAsState(emptyList())
-    val newMessage by viewModel.newMessage.observeAsState("")
 
-    if (userName.isEmpty()) {
-        UserNameInputDialog(onNameEntered = { name ->
-            viewModel.saveUser(name)
-        })
+    // Dialog-Zustand verwalten
+    var showNameDialog by remember { mutableStateOf(userName.isEmpty()) }
+
+    val context = LocalContext.current
+
+    if (showNameDialog) {
+        UserNameInputDialog(
+            onNameEntered = { name ->
+                viewModel.saveUser(name)
+                showNameDialog = false // Dialog schließen
+            },
+            onDismiss = { showNameDialog = false } // Dialog schließen
+        )
     } else {
         Column(
             modifier = Modifier
@@ -66,7 +76,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     Text("Stimmen: ${votes[selectedGame] ?: 0}", style = MaterialTheme.typography.bodySmall)
                 }
             }
-            //Ort und Essen Anzeigen
+            // Ort und Essen Anzeigen
             Spacer(modifier = Modifier.height(16.dp))
             BoxWithBorder(content = "Ort: Bei Alex")
             Spacer(modifier = Modifier.height(16.dp))
@@ -107,26 +117,15 @@ fun MainScreen(viewModel: MainViewModel) {
                     .fillMaxSize(),
                 contentAlignment = Alignment.BottomEnd
             ) {
-                IconButton(onClick = { viewModel.toggleChatDialog() }) {
-                    Icon(Icons.Filled.Message, contentDescription = "Chat", tint = Color(0xFFFF5252))
+                IconButton(onClick = {
+                    // Starte die ChatActivity
+                    val intent = Intent(context, ChatActivity::class.java)
+                    context.startActivity(intent)
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Chat", tint = Color(0xFF318DFF))
                 }
-            }
-
-            if (showChatDialog) {
-                ChatDialog(
-                    chatMessages = chatMessages,
-                    newMessage = newMessage,
-                    onMessageChange = { viewModel.updateNewMessage(it) },
-                    onSendMessage = {
-                        viewModel.sendMessage()
-                    },
-                    onDismiss = { viewModel.toggleChatDialog() }
-                )
             }
         }
     }
 }
-
-
-
 

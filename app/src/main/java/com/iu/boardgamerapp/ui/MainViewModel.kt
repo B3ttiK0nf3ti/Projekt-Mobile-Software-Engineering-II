@@ -33,8 +33,14 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _newMessage = MutableLiveData<String>()
     val newMessage: LiveData<String> = _newMessage
 
+    init {
+        // Lade den Benutzernamen beim Initialisieren des ViewModels
+        _userName.value = repository.getUser()
+    }
+
     fun saveUser(name: String) {
         _userName.value = name
+        repository.addUser(name) // Speichern des Benutzernamens im Repository
     }
 
     fun voteForGame(game: String) {
@@ -79,4 +85,5 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 }
+
 

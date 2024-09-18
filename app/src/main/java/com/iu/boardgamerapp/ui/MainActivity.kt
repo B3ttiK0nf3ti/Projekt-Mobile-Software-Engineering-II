@@ -11,9 +11,11 @@ import com.iu.boardgamerapp.ui.components.MainScreen
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
 
 class MainActivity : ComponentActivity() {
+    private lateinit var dbHelper: AppDatabaseHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dbHelper = AppDatabaseHelper(this)
+        dbHelper = AppDatabaseHelper(this)
         val userRepository = UserRepository(dbHelper)
 
         val viewModel: MainViewModel by viewModels {

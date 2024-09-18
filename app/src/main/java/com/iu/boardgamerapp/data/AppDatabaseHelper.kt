@@ -13,6 +13,8 @@ class AppDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         private const val COLUMN_NAME = "name"
     }
 
+    private val context: Context = context
+
     override fun onCreate(db: SQLiteDatabase) {
         val CREATE_USER_TABLE = ("CREATE TABLE $TABLE_NAME ($COLUMN_NAME TEXT)")
         db.execSQL(CREATE_USER_TABLE)
@@ -44,5 +46,11 @@ class AppDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         cursor.close()
         db.close()
         return name
+    }
+
+    fun clearUserTable() {
+        val db = this.writableDatabase
+        db.execSQL("DELETE FROM $TABLE_NAME")
+        db.close()
     }
 }

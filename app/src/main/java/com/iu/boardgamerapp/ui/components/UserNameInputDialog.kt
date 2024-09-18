@@ -11,10 +11,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
 @Composable
-fun UserNameInputDialog(onNameEntered: (String) -> Unit) {
+fun UserNameInputDialog(onNameEntered: (String) -> Unit, onDismiss: () -> Unit) {
     var newName by remember { mutableStateOf("") }
 
-    Dialog(onDismissRequest = { /* handle dismiss */ }) {
+    Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = Color.White,
@@ -36,9 +36,14 @@ fun UserNameInputDialog(onNameEntered: (String) -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(onClick = {
-                    onNameEntered(newName)
-                }) {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank()) { // Überprüfen, ob der Name nicht leer ist
+                            onNameEntered(newName)
+                            onDismiss() // Schließt den Dialog nach der Eingabe
+                        }
+                    }
+                ) {
                     Text("Speichern")
                 }
             }
