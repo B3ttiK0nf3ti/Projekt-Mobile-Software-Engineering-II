@@ -127,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 val endIndex = it.getColumnIndex(CalendarContract.Events.DTEND)
 
                 calendarEvents.clear() // Vorherige Ereignisse löschen
+                dbHelper.clearEventTable() // Event Tabelle zurücksetzen
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idIndex)
@@ -135,8 +136,11 @@ class MainActivity : ComponentActivity() {
                     val end = it.getLong(endIndex)
 
                     // Datum und Zeit formatieren
-                    val date = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(start))
+                    val date = java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(start))
                     val location = title
+
+                    // Auch in die SQLite-Datenbank einfügen
+                    dbHelper.insertEvent(date, location)
 
                     calendarEvents.add(date to location)
                 }
