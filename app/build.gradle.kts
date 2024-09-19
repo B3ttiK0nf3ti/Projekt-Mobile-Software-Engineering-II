@@ -61,7 +61,11 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.5.3")
     implementation("androidx.compose.material:material-icons-extended:1.5.3")
     implementation("androidx.compose.runtime:runtime-livedata:1.5.0") // oder die neueste Version
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")  // oder die neueste Version
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")
+    implementation(libs.generativeai)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.androidx.navigation.compose)  // oder die neueste Version
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -69,4 +73,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+
 }

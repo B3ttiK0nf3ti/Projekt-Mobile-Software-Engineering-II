@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,11 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.iu.boardgamerapp.ui.MainViewModel
 import com.iu.boardgamerapp.ui.UserNameInputDialog
 
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(viewModel: MainViewModel, navController: NavController) {
     val userName by viewModel.userName.observeAsState("")
     val gameSuggestions by viewModel.gameSuggestions.observeAsState(emptyList())
     val votes by viewModel.votes.observeAsState(emptyMap())
@@ -46,22 +48,15 @@ fun MainScreen(viewModel: MainViewModel) {
 
     val context = LocalContext.current
 
-    // Name-Eingabedialog anzeigen, wenn kein Name eingegeben wurde
     if (showNameDialog) {
         UserNameInputDialog(
             onNameEntered = { name ->
-                if (name.isNotBlank()) {
-                    viewModel.saveUser(name)
-                    showNameDialog = false // Dialog schließen, wenn ein gültiger Name eingegeben wurde
-                }
+                viewModel.saveUser(name)
+                showNameDialog = false // Dialog schließen
             },
-            onDismiss = {
-                // Dialog bleibt offen, wenn der Benutzer abbricht oder außerhalb klickt
-                showNameDialog = true // Erzwinge, dass der Dialog offen bleibt
-            }
+            onDismiss = { showNameDialog = false } // Dialog schließen
         )
     } else {
-        // Der Rest des UI nur, wenn der Name eingegeben wurde
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,7 +75,10 @@ fun MainScreen(viewModel: MainViewModel) {
             Button(onClick = { viewModel.toggleGameSelectionDialog() }) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(selectedGame)
-                    Text("Stimmen: ${votes[selectedGame] ?: 0}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Stimmen: ${votes[selectedGame] ?: 0}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
             // Ort und Essen Anzeigen
@@ -122,17 +120,44 @@ fun MainScreen(viewModel: MainViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxSize(),
-                contentAlignment = Alignment.BottomEnd
             ) {
-                IconButton(onClick = {
-                    // Starte die ChatActivity
-                    val intent = Intent(context, ChatActivity::class.java)
-                    context.startActivity(intent)
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Chat", tint = Color(0xFF318DFF))
+                // Kalender-Symbol links unten
+                IconButton(
+                    onClick = {
+                        // Kalender-Logik hier
+                        navController.navigate("game_schedule")
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart) // Links unten ausrichten
+                        .padding(16.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.CalendarToday,
+                        contentDescription = "Kalender",
+                        tint = Color(0xFF318DFF)
+                    )
+                }
+
+                // Chat-Symbol rechts unten
+                IconButton(
+                    onClick = {
+                        // Starte die ChatActivity
+                        val intent = Intent(context, ChatActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd) // Rechts unten ausrichten
+                        .padding(16.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Message,
+                        contentDescription = "Chat",
+                        tint = Color(0xFF318DFF)
+                    )
                 }
             }
         }
     }
 }
+
 
