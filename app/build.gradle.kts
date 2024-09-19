@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.iu.boardgamerapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.iu.boardgamerapp"
