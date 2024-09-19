@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -62,6 +63,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.5.3")
     implementation("androidx.compose.runtime:runtime-livedata:1.5.0") // oder die neueste Version
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")  // oder die neueste Version
+    implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation(libs.firebase.firestore.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,3 +74,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+

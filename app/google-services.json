@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "274201087596",
+    "project_id": "boardgamerapp-c1253",
+    "storage_bucket": "boardgamerapp-c1253.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274201087596:android:8f57826a3aeb82b6a2d249",
+        "android_client_info": {
+          "package_name": "com.iu.boardgamerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKFJG-cGTB6zxYPXFjwcLys0xoNdw32y8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
