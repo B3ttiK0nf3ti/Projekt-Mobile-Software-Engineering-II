@@ -1,5 +1,6 @@
 package com.iu.boardgamerapp.data
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -34,6 +35,7 @@ class AppDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
+        db.execSQL("DROP TABLE IF EXISTS $EVENT_TABLE_NAME")
         onCreate(db)
     }
 
@@ -76,12 +78,7 @@ class AppDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         db.close()
     }
 
-    fun clearEventTable() {
-        val db = this.writableDatabase
-        db.execSQL("DELETE FROM $EVENT_TABLE_NAME")
-        db.close()
-    }
-
+    @SuppressLint("Range")
     fun getAllEvents(): List<Pair<String, String>> {
         val events = mutableListOf<Pair<String, String>>()
         val db = this.readableDatabase

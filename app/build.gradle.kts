@@ -65,6 +65,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")  // oder die neueste Version
     implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.30.1")
     implementation(libs.firebase.firestore.ktx)
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")
     implementation(libs.generativeai)

@@ -1,5 +1,6 @@
 package com.iu.boardgamerapp.ui
 
+import GameScheduleScreen
 import android.Manifest
 import android.content.ContentResolver
 import android.content.pm.PackageManager
@@ -11,11 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -23,7 +20,6 @@ import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.components.MainScreen
-import com.iu.boardgamerapp.ui.screens.GameScheduleScreen
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
 import androidx.core.content.ContextCompat
 import java.util.*
@@ -85,6 +81,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun fetchCalendarEvents() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
             val contentResolver: ContentResolver = contentResolver
@@ -127,7 +124,6 @@ class MainActivity : ComponentActivity() {
                 val endIndex = it.getColumnIndex(CalendarContract.Events.DTEND)
 
                 calendarEvents.clear() // Vorherige Ereignisse löschen
-                dbHelper.clearEventTable() // Event Tabelle zurücksetzen
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idIndex)
