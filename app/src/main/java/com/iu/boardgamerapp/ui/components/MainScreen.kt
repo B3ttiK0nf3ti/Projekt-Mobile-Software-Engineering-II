@@ -46,15 +46,22 @@ fun MainScreen(viewModel: MainViewModel) {
 
     val context = LocalContext.current
 
+    // Name-Eingabedialog anzeigen, wenn kein Name eingegeben wurde
     if (showNameDialog) {
         UserNameInputDialog(
             onNameEntered = { name ->
-                viewModel.saveUser(name)
-                showNameDialog = false // Dialog schließen
+                if (name.isNotBlank()) {
+                    viewModel.saveUser(name)
+                    showNameDialog = false // Dialog schließen, wenn ein gültiger Name eingegeben wurde
+                }
             },
-            onDismiss = { showNameDialog = false } // Dialog schließen
+            onDismiss = {
+                // Dialog bleibt offen, wenn der Benutzer abbricht oder außerhalb klickt
+                showNameDialog = true // Erzwinge, dass der Dialog offen bleibt
+            }
         )
     } else {
+        // Der Rest des UI nur, wenn der Name eingegeben wurde
         Column(
             modifier = Modifier
                 .fillMaxSize()

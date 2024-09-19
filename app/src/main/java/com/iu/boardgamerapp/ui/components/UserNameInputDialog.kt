@@ -11,8 +11,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
 @Composable
-fun UserNameInputDialog(onNameEntered: (String) -> Unit, onDismiss: () -> Unit) {
+fun UserNameInputDialog(
+    onNameEntered: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
     var newName by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -29,24 +33,49 @@ fun UserNameInputDialog(onNameEntered: (String) -> Unit, onDismiss: () -> Unit) 
 
                 TextField(
                     value = newName,
-                    onValueChange = { newName = it },
+                    onValueChange = {
+                        newName = it
+                        errorMessage = null // Fehler zurücksetzen, wenn der Benutzer tippt
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Name") }
+                    label = { Text("Name") },
+                    isError = errorMessage != null // Fehlerstatus des Textfelds
                 )
+
+                // Fehlermeldung anzeigen, falls vorhanden
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = {
-                        if (newName.isNotBlank()) { // Überprüfen, ob der Name nicht leer ist
-                            onNameEntered(newName)
-                            onDismiss() // Schließt den Dialog nach der Eingabe
-                        }
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Speichern")
+                    TextButton(onClick = onDismiss) {
+                        Text("Abbrechen")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(onClick = {
+                        if (newName.isBlank()) {
+                            // Fehlermeldung setzen, wenn der Name leer ist
+                            errorMessage = "Benutzernamen eingeben"
+                        } else {
+                            onNameEntered(newName)
+                        }
+                    }) {
+                        Text("Speichern")
+                    }
                 }
             }
         }
     }
 }
+

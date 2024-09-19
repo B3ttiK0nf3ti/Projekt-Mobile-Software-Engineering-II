@@ -34,8 +34,8 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     val newMessage: LiveData<String> = _newMessage
 
     init {
-        // Lade den Benutzernamen beim Initialisieren des ViewModels
-        _userName.value = repository.getUser()
+        val savedUserName = repository.getUser() ?: ""
+        _userName.value = savedUserName
     }
 
     fun saveUser(name: String) {
