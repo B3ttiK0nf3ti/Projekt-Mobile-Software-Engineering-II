@@ -70,7 +70,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")
     implementation(libs.generativeai)
     implementation(libs.androidx.navigation.runtime.ktx)
-    implementation(libs.androidx.navigation.compose)  // oder die neueste Version
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.foundation.android)  // oder die neueste Version
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
