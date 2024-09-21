@@ -26,7 +26,12 @@ import com.iu.boardgamerapp.ui.MainViewModel
 import com.iu.boardgamerapp.ui.UserNameInputDialog
 
 @Composable
-fun MainScreen(viewModel: MainViewModel, navController: NavController, onRotateHost: () -> Unit) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    navController: NavController,
+    onShowUserListDialog: () -> Unit, // Neu hinzugefügt
+    onRotateHost: () -> Unit            // Neu hinzugefügt
+) {
     val userName by viewModel.userName.observeAsState("")
     val currentHost by viewModel.currentHost.observeAsState("") // Aktueller Gastgeber
     val gameSuggestions by viewModel.gameSuggestions.observeAsState(emptyList())
@@ -84,7 +89,7 @@ fun MainScreen(viewModel: MainViewModel, navController: NavController, onRotateH
             Spacer(modifier = Modifier.height(16.dp))
             Text("Aktueller Gastgeber: $currentHost") // Zeige den aktuellen Gastgeber an
 
-            Button(onClick = { showHostDialog = true }) {
+            Button(onClick = { onShowUserListDialog() }) {
                 Text("Gastgeber ändern")
             }
 

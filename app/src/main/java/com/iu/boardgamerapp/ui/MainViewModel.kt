@@ -1,9 +1,12 @@
 package com.iu.boardgamerapp.ui
 
+import android.app.AlertDialog
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.iu.boardgamerapp.data.UserRepository
+import android.content.Context
+import android.util.Log
 
 class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _userName = MutableLiveData<String>()
@@ -36,6 +39,15 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _currentHost = MutableLiveData<String>()
     val currentHost: LiveData<String> = _currentHost
 
+    private val _userList = MutableLiveData<List<Triple<Int, String, Int>>>()
+    val userList: LiveData<List<Triple<Int, String, Int>>> = _userList
+
+    fun loadUsers() {
+        val users = repository.getAllUsers()  // Hol die Benutzerliste vom Repository
+        _userList.value = users               // Setze den Wert für _userList (MutableLiveData)
+        Log.d("ViewModel", "Benutzerliste geladen: ${users.joinToString()}")
+    }
+
     init {
         val savedUserName = repository.getUser() ?: ""
         _userName.value = savedUserName
@@ -48,11 +60,11 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
 
     fun changeHost(newHostName: String) {
         val users = repository.getAllUsers()
-        val newHost = users.find { it.second == newHostName } // Zugriff auf den Benutzernamen
+        val newHost = users.find { it.second == newHostName }
 
         if (newHost != null) {
-            repository.updateHostStatus(newHost.second) // Setze den neuen Gastgeber (Name)
-            loadCurrentHost()
+            repository.updateHostStatus(newHost.second) // Setze den neuen Gastgeber (ID)
+            loadCurrentHost() // Lade den aktuellen Gastgeber neu
         }
     }
 
@@ -101,6 +113,8 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     fun toggleGameSelectionDialog() {
         _showGameSelectionDialog.value = _showGameSelectionDialog.value?.not() ?: true
     }
+
+
 
     fun toggleChatDialog() {
         _showChatDialog.value = _showChatDialog.value?.not() ?: true

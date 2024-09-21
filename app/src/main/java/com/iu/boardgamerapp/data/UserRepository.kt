@@ -1,6 +1,8 @@
 package com.iu.boardgamerapp.data
 
 import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.util.Log
 import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_ID
 import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_IS_HOST
 import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_NAME
@@ -9,7 +11,13 @@ import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.TABLE_NAME
 class UserRepository(private val dbHelper: AppDatabaseHelper) {
 
     fun addUser(name: String) {
-        dbHelper.addUser(name)
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_NAME, name)
+            put(COLUMN_IS_HOST, 0)
+        }
+        val newRowId = db.insert(TABLE_NAME, null, values)
+        Log.d("UserRepository", "Benutzer hinzugefügt: $name mit ID: $newRowId")
     }
 
     fun getUser(): String? {
@@ -22,24 +30,20 @@ class UserRepository(private val dbHelper: AppDatabaseHelper) {
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             TABLE_NAME,
-            arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_IS_HOST), // Spalten, die abgerufen werden sollen
-            null,
-            null,
-            null,
-            null,
-            null
+            arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_IS_HOST),
+            null, null, null, null, null
         )
 
-        cursor.use {
+        cursor?.use {
             while (it.moveToNext()) {
-                val id = it.getInt(it.getColumnIndex(COLUMN_ID)) // ID abfragen
-                val name = it.getString(it.getColumnIndex(COLUMN_NAME)) // Name abfragen
-                val isHost = it.getInt(it.getColumnIndex(COLUMN_IS_HOST)) // Host-Status abfragen
-                users.add(Triple(id, name, isHost)) // Benutzer zur Liste hinzufügen
+                val id = it.getInt(it.getColumnIndexOrThrow(COLUMN_ID))
+                val name = it.getString(it.getColumnIndexOrThrow(COLUMN_NAME))
+                val isHost = it.getInt(it.getColumnIndexOrThrow(COLUMN_IS_HOST))
+                users.add(Triple(id, name, isHost))
             }
         }
-        db.close()
-        return users // Liste mit Benutzern zurückgeben
+        Log.d("UserRepository", "Benutzer aus der Datenbank: ${users.joinToString()}")
+        return users
     }
 
     fun updateHostStatus(newHostName: String) {

@@ -2,11 +2,13 @@ package com.iu.boardgamerapp.ui
 
 import GameScheduleScreen
 import android.Manifest
+import android.app.AlertDialog
 import android.content.ContentResolver
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
@@ -46,6 +48,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Observer für die Benutzerliste
+        viewModel.loadUsers() // Lade die Benutzerliste
+        viewModel.userList.observe(this) { users ->
+            Log.d("MainActivity", "Benutzerliste aus dem ViewModel: ${users.joinToString()}")
+            if (users.isEmpty()) {
+                Toast.makeText(this, "Keine Benutzer zur Auswahl", Toast.LENGTH_SHORT).show()
+            } else {
+                // Logik zum Anzeigen der Benutzer
+            }
+        }
+
         setContent {
             BoardGamerAppTheme {
                 val navController = rememberNavController()
@@ -53,10 +66,50 @@ class MainActivity : ComponentActivity() {
                 // Setup NavHost with the navController
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
-                        MainScreen(viewModel = viewModel, navController = navController) {
-                            // Hier kannst du die rotateHost-Methode aufrufen
-                            rotateHost()
+                        MainScreen(
+                            viewModel = viewModel,
+                            navController = navController,
+                            onShowUserListDialog = { showUserListDialog() },
+                            onRotateHost = { rotateHost() }
+                        )
+                    }
+                    composable("game_schedule") {
+                        GameScheduleScreen(
+                            gameDates = calendarEvents,
+                            navController = navController,
+                            fetchCalendarEvents = { fetchCalendarEvents() }
+                        )
+                    }
+                }
+
+                // Check and request calendar permission
+                LaunchedEffect(Unit) {
+                    when {
+                        ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED -> {
+                            fetchCalendarEvents()
                         }
+                        else -> {
+                            requestPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                        }
+                    }
+                }
+            }
+        }
+
+
+        setContent {
+            BoardGamerAppTheme {
+                val navController = rememberNavController()
+
+                // Setup NavHost with the navController
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        MainScreen(
+                            viewModel = viewModel,
+                            navController = navController,
+                            onShowUserListDialog = { showUserListDialog() }, // Übergebe die Funktion
+                            onRotateHost = { rotateHost() }                 // Rotieren-Funktion
+                        )
                     }
                     composable("game_schedule") {
                         GameScheduleScreen(
@@ -84,6 +137,31 @@ class MainActivity : ComponentActivity() {
 
     private fun rotateHost() {
         viewModel.rotateHost() // Aufruf der Methode im ViewModel
+    }
+
+    private fun showUserListDialog() {
+        // Benutzerliste abrufen und in ein Array umwandeln
+        val userList = viewModel.userList.value?.map { it.second }?.toTypedArray() ?: arrayOf()
+        Log.d("UserList", "Benutzerliste: ${userList.joinToString()}")
+
+        // Überprüfen, ob die Benutzerliste leer ist
+        if (userList.isEmpty()) {
+            Toast.makeText(this, "Keine Benutzer zur Auswahl", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialog = AlertDialog.Builder(this)
+        dialog.setTitle("Wähle einen neuen Gastgeber")
+
+        dialog.setItems(userList) { _, which ->
+            val selectedUser = viewModel.userList.value?.get(which)
+            selectedUser?.let {
+                viewModel.changeHost(it.second) // Ändere den Gastgeber
+            }
+        }
+
+        dialog.setNegativeButton("Abbrechen", null)
+        dialog.show()
     }
 
     private fun fetchCalendarEvents() {

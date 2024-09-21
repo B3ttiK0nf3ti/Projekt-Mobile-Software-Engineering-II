@@ -6,9 +6,9 @@ import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.ui.MainViewModel
 
 class MainViewModelFactory(private val userRepository: UserRepository) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
             return MainViewModel(userRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
