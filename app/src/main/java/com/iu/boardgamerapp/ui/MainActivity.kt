@@ -12,6 +12,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,18 +28,14 @@ import java.util.*
 
 class MainActivity : ComponentActivity() {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    private lateinit var dbHelper: AppDatabaseHelper
-
     private val calendarEvents = mutableStateListOf<Pair<String, String>>() // State for storing calendar events
+
+    private val viewModel: MainViewModel by viewModels {
+        MainViewModelFactory(UserRepository(AppDatabaseHelper(this)))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        dbHelper = AppDatabaseHelper(this)
-        val userRepository = UserRepository(dbHelper)
-
-        val viewModel: MainViewModel by viewModels {
-            MainViewModelFactory(userRepository)
-        }
 
         // Register permission request launcher
         requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -55,13 +53,16 @@ class MainActivity : ComponentActivity() {
                 // Setup NavHost with the navController
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
-                        MainScreen(viewModel = viewModel, navController = navController)
+                        MainScreen(viewModel = viewModel, navController = navController) {
+                            // Hier kannst du die rotateHost-Methode aufrufen
+                            rotateHost()
+                        }
                     }
                     composable("game_schedule") {
                         GameScheduleScreen(
-                            gameDates = calendarEvents, // Pass the calendar events here
+                            gameDates = calendarEvents,
                             navController = navController,
-                            fetchCalendarEvents = { fetchCalendarEvents() } // Pass the fetchCalendarEvents callback
+                            fetchCalendarEvents = { fetchCalendarEvents() }
                         )
                     }
                 }
@@ -81,18 +82,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun rotateHost() {
+        viewModel.rotateHost() // Aufruf der Methode im ViewModel
+    }
 
     private fun fetchCalendarEvents() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
             val contentResolver: ContentResolver = contentResolver
             val uri = CalendarContract.Events.CONTENT_URI
 
-            // Startzeit: aktuelles Datum
             val startMillis: Long = Calendar.getInstance().run {
                 timeInMillis
             }
 
-            // Endzeit: Ein Jahr ab jetzt (du kannst das nach Bedarf anpassen)
             val endMillis: Long = Calendar.getInstance().run {
                 add(Calendar.YEAR, 1)
                 timeInMillis
@@ -105,7 +107,6 @@ class MainActivity : ComponentActivity() {
                 CalendarContract.Events.DTEND
             )
 
-            // Auswahlkriterien für zukünftige Ereignisse
             val selection = "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
             val selectionArgs = arrayOf(startMillis.toString(), "%Brettspielabend%")
 
@@ -114,31 +115,25 @@ class MainActivity : ComponentActivity() {
                 projection,
                 selection,
                 selectionArgs,
-                "${CalendarContract.Events.DTSTART} ASC" // Sortierung nach Startdatum
+                "${CalendarContract.Events.DTSTART} ASC"
             )
 
             cursor?.use {
                 val idIndex = it.getColumnIndex(CalendarContract.Events._ID)
                 val titleIndex = it.getColumnIndex(CalendarContract.Events.TITLE)
                 val startIndex = it.getColumnIndex(CalendarContract.Events.DTSTART)
-                val endIndex = it.getColumnIndex(CalendarContract.Events.DTEND)
 
-                calendarEvents.clear() // Vorherige Ereignisse löschen
+                calendarEvents.clear()
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idIndex)
                     val title = it.getString(titleIndex)
                     val start = it.getLong(startIndex)
-                    val end = it.getLong(endIndex)
 
-                    // Datum und Zeit formatieren
-                    val date = java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(start))
-                    val location = title
-
-                    // Auch in die SQLite-Datenbank einfügen
-                    dbHelper.insertEvent(date, location)
-
-                    calendarEvents.add(date to location)
+                    // Datum formatieren und direkt zur Liste hinzufügen
+                    calendarEvents.add(
+                        java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(start)) to title
+                    )
                 }
             }
         } else {

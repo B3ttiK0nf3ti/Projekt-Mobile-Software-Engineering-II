@@ -9,33 +9,51 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _userName = MutableLiveData<String>()
     val userName: LiveData<String> = _userName
 
-    private val _gameSuggestions = MutableLiveData<List<String>>()
+    private val _gameSuggestions = MutableLiveData<List<String>>(emptyList())
     val gameSuggestions: LiveData<List<String>> = _gameSuggestions
 
-    private val _votes = MutableLiveData<Map<String, Int>>()
+    private val _votes = MutableLiveData<Map<String, Int>>(emptyMap())
     val votes: LiveData<Map<String, Int>> = _votes
 
-    private val _selectedGame = MutableLiveData<String>()
+    private val _selectedGame = MutableLiveData<String>("")
     val selectedGame: LiveData<String> = _selectedGame
 
-    private val _rating = MutableLiveData<Int>()
+    private val _rating = MutableLiveData<Int>(0)
     val rating: LiveData<Int> = _rating
 
-    private val _showGameSelectionDialog = MutableLiveData<Boolean>()
+    private val _showGameSelectionDialog = MutableLiveData<Boolean>(false)
     val showGameSelectionDialog: LiveData<Boolean> = _showGameSelectionDialog
 
-    private val _showChatDialog = MutableLiveData<Boolean>()
+    private val _showChatDialog = MutableLiveData<Boolean>(false)
     val showChatDialog: LiveData<Boolean> = _showChatDialog
 
-    private val _chatMessages = MutableLiveData<List<String>>()
+    private val _chatMessages = MutableLiveData<List<String>>(emptyList())
     val chatMessages: LiveData<List<String>> = _chatMessages
 
-    private val _newMessage = MutableLiveData<String>()
+    private val _newMessage = MutableLiveData<String>("")
     val newMessage: LiveData<String> = _newMessage
+
+    private val _currentHost = MutableLiveData<String>()
+    val currentHost: LiveData<String> = _currentHost
 
     init {
         val savedUserName = repository.getUser() ?: ""
         _userName.value = savedUserName
+        loadCurrentHost()
+    }
+
+    private fun loadCurrentHost() {
+        _currentHost.value = repository.getCurrentHostName()
+    }
+
+    fun changeHost(newHostName: String) {
+        val users = repository.getAllUsers()
+        val newHost = users.find { it.second == newHostName } // Zugriff auf den Benutzernamen
+
+        if (newHost != null) {
+            repository.updateHostStatus(newHost.second) // Setze den neuen Gastgeber (Name)
+            loadCurrentHost()
+        }
     }
 
     fun saveUser(name: String) {
@@ -48,6 +66,22 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
         updatedVotes[game] = (updatedVotes[game] ?: 0) + 1
         _votes.value = updatedVotes
         _selectedGame.value = updatedVotes.maxByOrNull { it.value }?.key ?: ""
+    }
+
+    fun rotateHost() {
+        val users = repository.getAllUsers() // Zugriff auf das Repository
+        val currentHostIndex = users.indexOfFirst { it.third == 1 } // Assuming third is isHost in Triple
+
+        if (currentHostIndex != -1) {
+            val nextHostIndex = (currentHostIndex + 1) % users.size
+            val nextHost = users[nextHostIndex]
+
+            // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
+            repository.updateHostStatus(users[currentHostIndex].second) // Übergibt den Namen, nicht die ID
+            // Den nächsten Gastgeber auf "Gastgeber" setzen
+            repository.updateHostStatus(nextHost.second) // Übergibt den Namen, nicht die ID
+            loadCurrentHost() // Aktuellen Gastgeber neu laden
+        }
     }
 
     fun addGame(newGame: String) {
@@ -85,5 +119,3 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 }
-
-
