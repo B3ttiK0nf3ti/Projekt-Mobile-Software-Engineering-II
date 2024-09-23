@@ -50,14 +50,15 @@ data class ChatMessage(
     val timestamp: String = ""
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(userName: String, onBack: () -> Unit) {
     var chatMessages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var newMessage by remember { mutableStateOf("") }
 
     fun getSortedMessages(messages: List<ChatMessage>): List<ChatMessage> {
-        return messages.sortedBy { it.timestamp }
+        return messages.sortedBy { message ->
+            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse(message.timestamp)
+        }
     }
 
     // Firestore Listener
@@ -79,34 +80,47 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFE0E0E0) // Hellgrauer Hintergrund
+        color = Color(0xFFE0E0E0)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.Start)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .background(Color.White)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Zurück",
-                        tint = Color.Gray
-                    )
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Zurück",
+                            tint = Color.Gray
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        Text(
+                            text = "Spieleabend-Chat",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF318DFF),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(48.dp))
                 }
-
-                Text(
-                    text = "Spieleabend-Chat",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF318DFF) // Blau
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 Column(
                     modifier = Modifier
@@ -124,29 +138,30 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .background(Color.White, shape = RoundedCornerShape(8.dp)) // Hintergrundfarbe auf Weiß setzen
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
                     ) {
                         TextField(
                             value = newMessage,
                             onValueChange = { newMessage = it },
                             placeholder = { Text("Nachricht schreiben") },
-                            colors = TextFieldDefaults.textFieldColors(
-                                containerColor = Color.Transparent, // Transparent für den Hintergrund
-                                focusedIndicatorColor = Color.Transparent, // Keine Linie bei Fokus
-                                unfocusedIndicatorColor = Color.Transparent // Keine Linie bei Fokus
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
                             ),
-                            modifier = Modifier.fillMaxWidth() // TextField füllt die Box
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
                     IconButton(
                         onClick = {
-                            val timestamp = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
+                            val timestamp = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).apply {
                                 timeZone = TimeZone.getTimeZone("Europe/Berlin")
                             }.format(Date())
 
@@ -172,11 +187,9 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
     }
 }
 
-
-
 @Composable
 fun ChatBubble(message: ChatMessage, isOwnMessage: Boolean) {
-    val alignment = if (isOwnMessage) Alignment.End else Alignment.Start
+    if (isOwnMessage) Alignment.End else Alignment.Start
     val backgroundColor = if (isOwnMessage) Color(0xFF318DFF) else Color.White
     val textColor = if (isOwnMessage) Color.White else Color.Black
 
