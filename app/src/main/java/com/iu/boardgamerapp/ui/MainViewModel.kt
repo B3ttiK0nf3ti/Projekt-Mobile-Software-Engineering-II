@@ -1,14 +1,13 @@
 package com.iu.boardgamerapp.ui
 
-import android.app.AlertDialog
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.iu.boardgamerapp.data.UserRepository
-import android.content.Context
-import android.util.Log
 
 class MainViewModel(private val repository: UserRepository) : ViewModel() {
+
     private val _userName = MutableLiveData<String>()
     val userName: LiveData<String> = _userName
 
@@ -39,32 +38,43 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _currentHost = MutableLiveData<String>()
     val currentHost: LiveData<String> = _currentHost
 
-    private val _userList = MutableLiveData<List<Triple<Int, String, Int>>>()
-    val userList: LiveData<List<Triple<Int, String, Int>>> = _userList
-
-    fun loadUsers() {
-        val users = repository.getAllUsers()  // Hol die Benutzerliste vom Repository
-        _userList.value = users               // Setze den Wert für _userList (MutableLiveData)
-        Log.d("ViewModel", "Benutzerliste geladen: ${users.joinToString()}")
-    }
+    private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
+    val userList: LiveData<List<Pair<String, Boolean>>> = _userList
 
     init {
-        val savedUserName = repository.getUser() ?: ""
-        _userName.value = savedUserName
+        loadUserName()
         loadCurrentHost()
+        loadUsers()
+    }
+
+    private fun loadUserName() {
+        repository.getUser { name ->
+            _userName.value = name
+            Log.d("ViewModel", "Benutzername geladen: $name")
+        }
     }
 
     private fun loadCurrentHost() {
-        _currentHost.value = repository.getCurrentHostName()
+        repository.getCurrentHostName { hostName ->
+            _currentHost.value = hostName
+            Log.d("ViewModel", "Aktueller Host geladen: $hostName")
+        }
+    }
+
+    fun loadUsers() {
+        repository.getAllUsers { users ->
+            _userList.value = users
+            Log.d("ViewModel", "Benutzerliste geladen: ${users.joinToString()}")
+        }
     }
 
     fun changeHost(newHostName: String) {
-        val users = repository.getAllUsers()
-        val newHost = users.find { it.second == newHostName }
-
-        if (newHost != null) {
-            repository.updateHostStatus(newHost.second) // Setze den neuen Gastgeber (ID)
-            loadCurrentHost() // Lade den aktuellen Gastgeber neu
+        _userList.value?.let { users ->
+            val newHost = users.find { it.first == newHostName }
+            if (newHost != null) {
+                repository.updateHostStatus(newHost.first) // Setze den neuen Gastgeber
+                loadCurrentHost() // Lade den aktuellen Gastgeber neu
+            }
         }
     }
 
@@ -81,18 +91,19 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     }
 
     fun rotateHost() {
-        val users = repository.getAllUsers() // Zugriff auf das Repository
-        val currentHostIndex = users.indexOfFirst { it.third == 1 } // Assuming third is isHost in Triple
+        _userList.value?.let { users ->
+            val currentHostIndex = users.indexOfFirst { it.second } // Assuming second is isHost in Pair
 
-        if (currentHostIndex != -1) {
-            val nextHostIndex = (currentHostIndex + 1) % users.size
-            val nextHost = users[nextHostIndex]
+            if (currentHostIndex != -1) {
+                val nextHostIndex = (currentHostIndex + 1) % users.size
+                val nextHost = users[nextHostIndex]
 
-            // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
-            repository.updateHostStatus(users[currentHostIndex].second) // Übergibt den Namen, nicht die ID
-            // Den nächsten Gastgeber auf "Gastgeber" setzen
-            repository.updateHostStatus(nextHost.second) // Übergibt den Namen, nicht die ID
-            loadCurrentHost() // Aktuellen Gastgeber neu laden
+                // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
+                repository.updateHostStatus(users[currentHostIndex].first) // Übergibt den Namen
+                // Den nächsten Gastgeber auf "Gastgeber" setzen
+                repository.updateHostStatus(nextHost.first) // Übergibt den Namen
+                loadCurrentHost() // Aktuellen Gastgeber neu laden
+            }
         }
     }
 
@@ -113,8 +124,6 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     fun toggleGameSelectionDialog() {
         _showGameSelectionDialog.value = _showGameSelectionDialog.value?.not() ?: true
     }
-
-
 
     fun toggleChatDialog() {
         _showChatDialog.value = _showChatDialog.value?.not() ?: true

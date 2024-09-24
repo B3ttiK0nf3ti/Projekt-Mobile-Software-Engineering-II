@@ -1,95 +1,112 @@
 package com.iu.boardgamerapp.data
 
-import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.util.Log
-import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_ID
-import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_IS_HOST
-import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.COLUMN_NAME
-import com.iu.boardgamerapp.data.AppDatabaseHelper.Companion.TABLE_NAME
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
-class UserRepository(private val dbHelper: AppDatabaseHelper) {
+class UserRepository(private val databaseHelper: AppDatabaseHelper) {
 
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    companion object {
+        private const val TAG = "UserRepository"
+        const val USERS_COLLECTION = "user"
+    }
+
+    // Benutzer hinzufügen
     fun addUser(name: String) {
-        val db = dbHelper.writableDatabase
-        val values = ContentValues().apply {
-            put(COLUMN_NAME, name)
-            put(COLUMN_IS_HOST, 0)
-        }
-        val newRowId = db.insert(TABLE_NAME, null, values)
-        Log.d("UserRepository", "Benutzer hinzugefügt: $name mit ID: $newRowId")
-    }
-
-    fun getUser(): String? {
-        return dbHelper.getUser()
-    }
-
-    @SuppressLint("Range")
-    fun getAllUsers(): List<Triple<Int, String, Int>> {
-        val users = mutableListOf<Triple<Int, String, Int>>() // Liste zum Speichern der Benutzer
-        val db = dbHelper.readableDatabase
-        val cursor = db.query(
-            TABLE_NAME,
-            arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_IS_HOST),
-            null, null, null, null, null
+        val userData = hashMapOf(
+            "name" to name,
+            "isHost" to false // Standardmäßig kein Host
         )
 
-        cursor?.use {
-            while (it.moveToNext()) {
-                val id = it.getInt(it.getColumnIndexOrThrow(COLUMN_ID))
-                val name = it.getString(it.getColumnIndexOrThrow(COLUMN_NAME))
-                val isHost = it.getInt(it.getColumnIndexOrThrow(COLUMN_IS_HOST))
-                users.add(Triple(id, name, isHost))
+        db.collection(USERS_COLLECTION).add(userData)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Benutzer hinzugefügt: $name mit ID: ${documentReference.id}")
             }
-        }
-        Log.d("UserRepository", "Benutzer aus der Datenbank: ${users.joinToString()}")
-        return users
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Fehler beim Hinzufügen des Benutzers", e)
+            }
     }
 
+    // Benutzer abrufen
+    fun getUser(onComplete: (String?) -> Unit) {
+        db.collection(USERS_COLLECTION).limit(1).get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    onComplete(document.getString("name"))
+                }
+                onComplete(null) // Rückgabe von null, wenn kein Benutzer vorhanden ist
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Fehler beim Abrufen des Benutzers", e)
+                onComplete(null)
+            }
+    }
+
+
+    // Alle Benutzer abrufen
+    fun getAllUsers(onComplete: (List<Pair<String, Boolean>>) -> Unit) {
+        val users = mutableListOf<Pair<String, Boolean>>() // Liste zum Speichern der Benutzer
+        db.collection(USERS_COLLECTION).get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    val name = document.getString("name") ?: ""
+                    val isHost = document.getBoolean("isHost") ?: false
+                    users.add(name to isHost)
+                }
+                Log.d(TAG, "Benutzer aus der Datenbank: ${users.joinToString()}")
+                onComplete(users)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Fehler beim Abrufen aller Benutzer", e)
+                onComplete(emptyList())
+            }
+    }
+
+    // Host-Status aktualisieren
     fun updateHostStatus(newHostName: String) {
-        val users = getAllUsers() // Alle Benutzer abrufen
-        val newHost = users.find { it.second == newHostName } // Benutzer anhand des Namens finden
+        getAllUsers { users ->
+            val newHost = users.find { it.first == newHostName } // Benutzer anhand des Namens finden
 
-        if (newHost != null) {
-            val currentHost = users.find { it.third == 1 } // Aktuellen Gastgeber finden
+            if (newHost != null) {
+                val currentHost = users.find { it.second } // Aktuellen Gastgeber finden
 
-            if (currentHost != null) {
-                // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
-                dbHelper.updateHostStatus(currentHost.first, 0) // Hier wird die ID des aktuellen Gastgebers verwendet
+                if (currentHost != null) {
+                    // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
+                    val currentHostRef = db.collection(USERS_COLLECTION).document(currentHost.first)
+                    currentHostRef.update("isHost", false)
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Fehler beim Aktualisieren des aktuellen Gastgebers", e)
+                        }
+                }
+
+                // Den neuen Gastgeber auf "Gastgeber" setzen
+                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.first)
+                newHostRef.update("isHost", true)
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Fehler beim Aktualisieren des neuen Gastgebers", e)
+                    }
             }
-
-            // Den neuen Gastgeber auf "Gastgeber" setzen
-            dbHelper.updateHostStatus(newHost.first, 1) // Hier wird die ID des neuen Gastgebers verwendet
         }
     }
 
-    @SuppressLint("Range")
-    fun getCurrentHostId(): Int? {
-        val db = dbHelper.readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME WHERE $COLUMN_IS_HOST = 1 LIMIT 1", null)
-
-        var hostId: Int? = null
-        if (cursor.moveToFirst()) {
-            hostId = cursor.getInt(cursor.getColumnIndex(COLUMN_ID))
-        }
-
-        cursor.close()
-        db.close()
-        return hostId
-    }
-
-    @SuppressLint("Range")
-    fun getCurrentHostName(): String {
-        val db = dbHelper.readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME WHERE $COLUMN_IS_HOST = 1 LIMIT 1", null)
-
-        var hostName: String? = null
-        if (cursor.moveToFirst()) {
-            hostName = cursor.getString(cursor.getColumnIndex(COLUMN_NAME))
-        }
-
-        cursor.close()
-        db.close()
-        return hostName ?: "Kein Gastgeber"
+    // Den aktuellen Host abrufen
+    fun getCurrentHostName(onComplete: (String?) -> Unit) {
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("isHost", true)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    onComplete(document.getString("name"))
+                }
+                onComplete(null) // Rückgabe von null, wenn kein Host vorhanden ist
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Fehler beim Abrufen des aktuellen Gastgebers", e)
+                onComplete(null)
+            }
     }
 }

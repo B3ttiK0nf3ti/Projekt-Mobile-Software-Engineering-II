@@ -4,6 +4,7 @@ import GameScheduleScreen
 import android.Manifest
 import android.app.AlertDialog
 import android.content.ContentResolver
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
@@ -30,7 +31,7 @@ import java.util.*
 
 class MainActivity : ComponentActivity() {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    private val calendarEvents = mutableStateListOf<Pair<String, String>>() // State for storing calendar events
+    private val calendarEvents = mutableStateListOf<Pair<String, String>>() // Zustand für Kalenderereignisse
 
     private val viewModel: MainViewModel by viewModels {
         MainViewModelFactory(UserRepository(AppDatabaseHelper(this)))
@@ -59,11 +60,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Setze den Inhalt mit NavHost und MainScreen
         setContent {
             BoardGamerAppTheme {
                 val navController = rememberNavController()
 
-                // Setup NavHost with the navController
+                // Setup NavHost mit dem navController
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
                         MainScreen(
@@ -71,44 +73,6 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             onShowUserListDialog = { showUserListDialog() },
                             onRotateHost = { rotateHost() }
-                        )
-                    }
-                    composable("game_schedule") {
-                        GameScheduleScreen(
-                            gameDates = calendarEvents,
-                            navController = navController,
-                            fetchCalendarEvents = { fetchCalendarEvents() }
-                        )
-                    }
-                }
-
-                // Check and request calendar permission
-                LaunchedEffect(Unit) {
-                    when {
-                        ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED -> {
-                            fetchCalendarEvents()
-                        }
-                        else -> {
-                            requestPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-                        }
-                    }
-                }
-            }
-        }
-
-
-        setContent {
-            BoardGamerAppTheme {
-                val navController = rememberNavController()
-
-                // Setup NavHost with the navController
-                NavHost(navController = navController, startDestination = "home") {
-                    composable("home") {
-                        MainScreen(
-                            viewModel = viewModel,
-                            navController = navController,
-                            onShowUserListDialog = { showUserListDialog() }, // Übergebe die Funktion
-                            onRotateHost = { rotateHost() }                 // Rotieren-Funktion
                         )
                     }
                     composable("game_schedule") {
@@ -141,7 +105,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showUserListDialog() {
         // Benutzerliste abrufen und in ein Array umwandeln
-        val userList = viewModel.userList.value?.map { it.second }?.toTypedArray() ?: arrayOf()
+        val userList = viewModel.userList.value?.map { it.first }?.toTypedArray() ?: arrayOf()
         Log.d("UserList", "Benutzerliste: ${userList.joinToString()}")
 
         // Überprüfen, ob die Benutzerliste leer ist
@@ -156,7 +120,7 @@ class MainActivity : ComponentActivity() {
         dialog.setItems(userList) { _, which ->
             val selectedUser = viewModel.userList.value?.get(which)
             selectedUser?.let {
-                viewModel.changeHost(it.second) // Ändere den Gastgeber
+                viewModel.changeHost(it.first) // Ändere den Gastgeber mit dem Benutzernamen
             }
         }
 

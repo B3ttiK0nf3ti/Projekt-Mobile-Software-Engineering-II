@@ -1,160 +1,154 @@
 package com.iu.boardgamerapp.data
 
-import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
-class AppDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+class AppDatabaseHelper(context: Context) {
+
+    private val db: FirebaseFirestore = Firebase.firestore
 
     companion object {
-        private const val DATABASE_VERSION = 2
-        private const val DATABASE_NAME = "boardgamerapp.db"
-        const val TABLE_NAME = "user"
-        const val COLUMN_ID = "id" // Neue ID-Spalte
-        internal const val COLUMN_NAME = "name" // Spalte für den Namen, jetzt public oder internal
-        const val COLUMN_IS_HOST = "isHost" // Neue Spalte für Host-Status
-        private const val EVENT_TABLE_NAME = "events"
-        private const val EVENT_COLUMN_ID = "_id"
-        private const val EVENT_COLUMN_DATE = "date"
-        private const val EVENT_COLUMN_LOCATION = "location"
+        private const val TAG = "AppDatabaseHelper"
+        const val USERS_COLLECTION = "user"     // Bestehende Sammlung für Benutzer
+        const val MESSAGES_COLLECTION = "messages" // Bestehende Sammlung für Nachrichten
     }
 
-    override fun onCreate(db: SQLiteDatabase) {
-        val CREATE_USER_TABLE = """
-            CREATE TABLE $TABLE_NAME (
-                $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, 
-                $COLUMN_NAME TEXT, 
-                $COLUMN_IS_HOST INTEGER DEFAULT 0
-            )
-        """.trimIndent()
-        db.execSQL(CREATE_USER_TABLE)
-
-        val CREATE_EVENT_TABLE = """
-            CREATE TABLE $EVENT_TABLE_NAME (
-                $EVENT_COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, 
-                $EVENT_COLUMN_DATE TEXT, 
-                $EVENT_COLUMN_LOCATION TEXT
-            )
-        """.trimIndent()
-        db.execSQL(CREATE_EVENT_TABLE)
-    }
-
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) {
-            db.execSQL("CREATE TEMPORARY TABLE user_backup(name TEXT, isHost INTEGER)")
-            db.execSQL("INSERT INTO user_backup(name, isHost) SELECT name, isHost FROM $TABLE_NAME")
-            db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-
-            val CREATE_USER_TABLE = """
-                CREATE TABLE $TABLE_NAME (
-                    $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    $COLUMN_NAME TEXT, 
-                    $COLUMN_IS_HOST INTEGER DEFAULT 0
-                )
-            """.trimIndent()
-            db.execSQL(CREATE_USER_TABLE)
-
-            db.execSQL("INSERT INTO $TABLE_NAME (name, isHost) SELECT name, isHost FROM user_backup")
-            db.execSQL("DROP TABLE user_backup")
-        }
-    }
-
-    fun addUser(name: String, isHost: Int = 0) {
-        val db = this.writableDatabase
-        val values = ContentValues().apply {
-            put(COLUMN_NAME, name)
-            put(COLUMN_IS_HOST, isHost)
-        }
-        db.insert(TABLE_NAME, null, values)
-        db.close()
-    }
-
-    @SuppressLint("Range")
-    fun getUser(): String? {
-        val db = this.readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME LIMIT 1", null)
-
-        var name: String? = null
-        if (cursor.moveToFirst()) {
-            name = cursor.getString(cursor.getColumnIndex(COLUMN_NAME))
-        }
-
-        cursor.close()
-        db.close()
-        return name
-    }
-
-    @SuppressLint("Range")
-    fun getCurrentHostName(): String? {
-        val db = this.readableDatabase
-        val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME WHERE $COLUMN_IS_HOST = 1 LIMIT 1", null)
-
-        var hostName: String? = null
-        if (cursor.moveToFirst()) {
-            hostName = cursor.getString(cursor.getColumnIndex(COLUMN_NAME))
-        }
-
-        cursor.close()
-        db.close()
-        return hostName
-    }
-
-    fun updateHostStatus(userId: Int, isHost: Int) {
-        val db = this.writableDatabase
-        val values = ContentValues().apply {
-            put(COLUMN_IS_HOST, isHost)
-        }
-        db.update(TABLE_NAME, values, "$COLUMN_ID = ?", arrayOf(userId.toString()))
-        db.close()
-    }
-
-    fun rotateHost() {
-        val db = this.writableDatabase
-        db.execSQL("UPDATE $TABLE_NAME SET $COLUMN_IS_HOST = 0 WHERE $COLUMN_IS_HOST = 1")
-        db.execSQL("UPDATE $TABLE_NAME SET $COLUMN_IS_HOST = 1 WHERE $COLUMN_ID = (SELECT MIN($COLUMN_ID) FROM $TABLE_NAME WHERE $COLUMN_IS_HOST = 0)")
-        db.close()
-    }
-
-    fun clearUserTable() {
-        val db = this.writableDatabase
-        db.execSQL("DELETE FROM $TABLE_NAME")
-        db.close()
-    }
-
-    fun insertEvent(date: String, location: String) {
-        val db = this.writableDatabase
-        val values = ContentValues().apply {
-            put(EVENT_COLUMN_DATE, date)
-            put(EVENT_COLUMN_LOCATION, location)
-        }
-        db.insert(EVENT_TABLE_NAME, null, values)
-        db.close()
-    }
-
-    @SuppressLint("Range")
-    fun getAllEvents(): List<Pair<String, String>> {
-        val events = mutableListOf<Pair<String, String>>()
-        val db = this.readableDatabase
-        val cursor = db.query(
-            EVENT_TABLE_NAME,
-            arrayOf(EVENT_COLUMN_DATE, EVENT_COLUMN_LOCATION),
-            null,
-            null,
-            null,
-            null,
-            "$EVENT_COLUMN_DATE ASC"
+    // Benutzer hinzufügen
+    fun addUser(name: String, isHost: Boolean = false, onComplete: (Boolean) -> Unit) {
+        val userId = db.collection(USERS_COLLECTION).document().id // Automatisch generierte ID
+        val userData = hashMapOf(
+            "name" to name,
+            "isHost" to isHost
         )
 
-        cursor.use {
-            while (it.moveToNext()) {
-                val date = it.getString(it.getColumnIndex(EVENT_COLUMN_DATE))
-                val location = it.getString(it.getColumnIndex(EVENT_COLUMN_LOCATION))
-                events.add(date to location)
+        db.collection(USERS_COLLECTION).document(userId).set(userData)
+            .addOnSuccessListener {
+                Log.d(TAG, "User successfully added with ID: $userId")
+                onComplete(true)
             }
-        }
-        db.close()
-        return events
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error adding user", e)
+                onComplete(false)
+            }
+    }
+
+    // Alle Benutzer abrufen
+    fun getUser(onComplete: (String?) -> Unit) {
+        db.collection(USERS_COLLECTION).limit(1).get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    onComplete(document.getString("name"))
+                }
+                onComplete(null) // Rückgabe von null, wenn kein Benutzer vorhanden ist
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error getting user", e)
+                onComplete(null)
+            }
+    }
+
+    // Den aktuellen Host-Namen abrufen
+    fun getCurrentHostName(onComplete: (String?) -> Unit) {
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("isHost", true)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    onComplete(document.getString("name"))
+                }
+                onComplete(null)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error getting current host", e)
+                onComplete(null)
+            }
+    }
+
+    // Host-Status aktualisieren
+    fun updateHostStatus(userId: String, isHost: Boolean) {
+        val userRef = db.collection(USERS_COLLECTION).document(userId)
+        userRef.update("isHost", isHost)
+            .addOnSuccessListener {
+                Log.d(TAG, "Host status updated for user: $userId")
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error updating host status", e)
+            }
+    }
+
+    // Host rotieren
+    fun rotateHost() {
+        // Zuerst alle Host-Status auf false setzen
+        db.collection(USERS_COLLECTION).whereEqualTo("isHost", true).get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    document.reference.update("isHost", false)
+                }
+
+                // Dann den nächsten Benutzer als Host festlegen
+                db.collection(USERS_COLLECTION).whereEqualTo("isHost", false).limit(1).get()
+                    .addOnSuccessListener { newHostSnapshot ->
+                        for (document in newHostSnapshot.documents) {
+                            document.reference.update("isHost", true)
+                        }
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error rotating host", e)
+            }
+    }
+
+    // Nachricht hinzufügen
+    fun addMessage(content: String, userId: String, onComplete: (Boolean) -> Unit) {
+        val messageData = hashMapOf(
+            "content" to content,
+            "userId" to userId,
+            "timestamp" to System.currentTimeMillis() // Zeitstempel hinzufügen
+        )
+
+        db.collection(MESSAGES_COLLECTION).add(messageData)
+            .addOnSuccessListener {
+                Log.d(TAG, "Message successfully added")
+                onComplete(true)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error adding message", e)
+                onComplete(false)
+            }
+    }
+
+    // Alle Nachrichten abrufen
+    fun getAllMessages(onComplete: (List<Pair<String, String>>) -> Unit) {
+        db.collection(MESSAGES_COLLECTION).orderBy("timestamp").get()
+            .addOnSuccessListener { result ->
+                val messages = mutableListOf<Pair<String, String>>()
+                for (document in result) {
+                    val content = document.getString("content") ?: ""
+                    val userId = document.getString("userId") ?: ""
+                    messages.add(content to userId)
+                }
+                onComplete(messages)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error getting messages", e)
+                onComplete(emptyList())
+            }
+    }
+
+    // Benutzer löschen (Optional)
+    fun clearUserTable() {
+        db.collection(USERS_COLLECTION).get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    document.reference.delete()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error clearing user table", e)
+            }
     }
 }
