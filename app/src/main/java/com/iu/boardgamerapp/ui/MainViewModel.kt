@@ -1,15 +1,27 @@
 package com.iu.boardgamerapp.ui
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
 
-class MainViewModel(private val repository: UserRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: UserRepository,
+    private val databaseHelper: AppDatabaseHelper,
+    context: Context
+) : ViewModel() {
+
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
     private val _userName = MutableLiveData<String>()
     val userName: LiveData<String> = _userName
+
+    private val _userExists = MutableLiveData<Boolean>()
+    val userExists: LiveData<Boolean> = _userExists
 
     private val _gameSuggestions = MutableLiveData<List<String>>(emptyList())
     val gameSuggestions: LiveData<List<String>> = _gameSuggestions
@@ -26,31 +38,57 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
     private val _showGameSelectionDialog = MutableLiveData<Boolean>(false)
     val showGameSelectionDialog: LiveData<Boolean> = _showGameSelectionDialog
 
-    private val _showChatDialog = MutableLiveData<Boolean>(false)
-    val showChatDialog: LiveData<Boolean> = _showChatDialog
-
-    private val _chatMessages = MutableLiveData<List<String>>(emptyList())
-    val chatMessages: LiveData<List<String>> = _chatMessages
-
-    private val _newMessage = MutableLiveData<String>("")
-    val newMessage: LiveData<String> = _newMessage
-
     private val _currentHost = MutableLiveData<String>()
     val currentHost: LiveData<String> = _currentHost
 
     private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
     val userList: LiveData<List<Pair<String, Boolean>>> = _userList
 
+
+
     init {
         loadUserName()
         loadCurrentHost()
-        loadUsers()
+    }
+
+    fun saveUser(name: String) {
+        _userName.value = name
+        saveUserNameToPreferences(name)
+        databaseHelper.addUser(name) { success ->
+            if (success) {
+                Log.d("ViewModel", "Benutzer erfolgreich gespeichert: $name")
+            } else {
+                Log.w("ViewModel", "Fehler beim Speichern des Benutzers: $name")
+            }
+        }
+    }
+
+    private fun saveUserNameToPreferences(name: String) {
+        sharedPreferences.edit().putString("user_name", name).apply()
+    }
+
+    fun clearUserName() {
+        sharedPreferences.edit().remove("user_name").apply()
+        _userName.value = ""
+        _userExists.value = false
     }
 
     private fun loadUserName() {
-        repository.getUser { name ->
-            _userName.value = name
-            Log.d("ViewModel", "Benutzername geladen: $name")
+        val savedUserName = sharedPreferences.getString("user_name", "")
+        _userName.value = savedUserName
+        if (!savedUserName.isNullOrEmpty()) {
+            checkUserExists(savedUserName)
+        } else {
+            _userExists.value = false
+        }
+    }
+
+    fun checkUserExists(name: String) {
+        databaseHelper.checkUserExists(name) { exists ->
+            _userExists.value = exists
+            if (!exists) {
+                clearUserName()
+            }
         }
     }
 
@@ -76,11 +114,6 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
                 loadCurrentHost() // Lade den aktuellen Gastgeber neu
             }
         }
-    }
-
-    fun saveUser(name: String) {
-        _userName.value = name
-        repository.addUser(name) // Speichern des Benutzernamens im Repository
     }
 
     fun voteForGame(game: String) {
@@ -123,22 +156,5 @@ class MainViewModel(private val repository: UserRepository) : ViewModel() {
 
     fun toggleGameSelectionDialog() {
         _showGameSelectionDialog.value = _showGameSelectionDialog.value?.not() ?: true
-    }
-
-    fun toggleChatDialog() {
-        _showChatDialog.value = _showChatDialog.value?.not() ?: true
-    }
-
-    fun updateNewMessage(message: String) {
-        _newMessage.value = message
-    }
-
-    fun sendMessage() {
-        val updatedMessages = _chatMessages.value?.toMutableList() ?: mutableListOf()
-        _newMessage.value?.let {
-            updatedMessages.add(it)
-            _chatMessages.value = updatedMessages
-            _newMessage.value = ""
-        }
     }
 }

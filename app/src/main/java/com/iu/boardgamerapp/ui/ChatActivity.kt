@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.iu.boardgamerapp.data.AppDatabaseHelper
-import com.iu.boardgamerapp.data.UserRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,21 +28,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 
-
 class ChatActivity : ComponentActivity() {
-    private lateinit var userRepository: UserRepository
+    private lateinit var dbHelper: AppDatabaseHelper
     private lateinit var firestore: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         firestore = FirebaseFirestore.getInstance()
-        val dbHelper = AppDatabaseHelper(this)
-        userRepository = UserRepository(dbHelper)
+        dbHelper = AppDatabaseHelper()
 
-        // Abrufen des Benutzernamens und Überprüfung per Log
-        userRepository.getUser { userName ->
-            val name = userName ?: "Unknown" // Fallback, falls kein Benutzer gefunden wurde
+        dbHelper.getUser { userName ->
+            val name = userName ?: "Unknown"
             Log.d("ChatActivity", "UserName retrieved: $name")
 
             setContent {
@@ -51,7 +47,7 @@ class ChatActivity : ComponentActivity() {
             }
         }
     }
-
+}
 
     data class ChatMessage(
         val user: String = "",
@@ -59,191 +55,188 @@ class ChatActivity : ComponentActivity() {
         val timestamp: String = ""
     )
 
-    @Composable
-    fun ChatScreen(userName: String, onBack: () -> Unit) {
-        var chatMessages by remember { mutableStateOf(listOf<ChatMessage>()) }
-        var newMessage by remember { mutableStateOf("") }
+@Composable
+fun ChatScreen(userName: String, onBack: () -> Unit) {
+    var chatMessages by remember { mutableStateOf(listOf<ChatMessage>()) }
+    var newMessage by remember { mutableStateOf("") }
 
-        // LazyListState für LazyColumn
-        val listState = rememberLazyListState()
+    // LazyListState für LazyColumn
+    val listState = rememberLazyListState()
 
-        // Firestore Listener
-        LaunchedEffect(Unit) {
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.collection("messages")
-                .addSnapshotListener { snapshot, e ->
-                    if (e != null) {
-                        return@addSnapshotListener
+    // Firestore Listener
+    LaunchedEffect(Unit) {
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("messages")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    // Nachrichten nach Timestamp sortieren
+                    val messages = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(ChatMessage::class.java)
+                    }.sortedBy { it.timestamp } // Sicherstellen, dass die Sortierung nach Timestamp erfolgt
+                    chatMessages = messages
+                }
+            }
+    }
+
+    LaunchedEffect(chatMessages.size) {
+        if (chatMessages.isNotEmpty()) {
+            listState.animateScrollToItem(chatMessages.size - 1)
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFFE0E0E0)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .background(Color.White)
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Zurück",
+                            tint = Color.Gray
+                        )
                     }
-                    if (snapshot != null) {
-                        // Nachrichten nach Timestamp sortieren
-                        val messages = snapshot.documents.mapNotNull { doc ->
-                            doc.toObject(ChatMessage::class.java)
-                        }.sortedBy { it.timestamp } // Sicherstellen, dass die Sortierung nach Timestamp erfolgt
-                        chatMessages = messages
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        Text(
+                            text = "Spieleabend-Chat",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF318DFF),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    items(chatMessages) { message ->
+                        ChatBubble(
+                            message = message,
+                            isOwnMessage = message.user == userName
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
-        }
 
-        // Wenn neue Nachrichten hinzugefügt werden, scrolle automatisch nach unten
-        LaunchedEffect(chatMessages.size) {
-            if (chatMessages.isNotEmpty()) {
-                listState.animateScrollToItem(chatMessages.size - 1)
-            }
-        }
+                Spacer(modifier = Modifier.height(16.dp))
 
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFE0E0E0)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .background(Color.White)
-                    ) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Zurück",
-                                tint = Color.Gray
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            Text(
-                                text = "Spieleabend-Chat",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF318DFF),
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(48.dp))
-                    }
-
-                    // Verwendung von LazyColumn mit listState für Scrollbarkeit
-                    LazyColumn(
-                        state = listState,
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
-                            .padding(8.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
                     ) {
-                        items(chatMessages) { message ->
-                            ChatBubble(
-                                message = message,
-                                isOwnMessage = message.user == userName
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
+                        TextField(
+                            value = newMessage,
+                            onValueChange = { newMessage = it },
+                            placeholder = { Text("Nachricht schreiben") },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    IconButton(
+                        onClick = {
+                            val timestamp = SimpleDateFormat(
+                                "dd-MM-yyyy HH:mm:ss",
+                                Locale.getDefault()
+                            ).apply {
+                                timeZone = TimeZone.getTimeZone("Europe/Berlin")
+                            }.format(Date())
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
+                            val newMessageObj = ChatMessage(user = userName, message = newMessage, timestamp = timestamp)
+                            chatMessages = chatMessages + newMessageObj
+                            newMessage = ""
+
+                            // Nachricht in Firestore speichern
+                            FirebaseFirestore.getInstance().collection("messages")
+                                .add(newMessageObj)
+                        },
+                        modifier = Modifier.padding(start = 8.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(Color.White, shape = RoundedCornerShape(8.dp))
-                        ) {
-                            TextField(
-                                value = newMessage,
-                                onValueChange = { newMessage = it },
-                                placeholder = { Text("Nachricht schreiben") },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                val timestamp = SimpleDateFormat(
-                                    "dd-MM-yyyy HH:mm:ss", // Zeitformat mit Sekunden
-                                    Locale.getDefault()
-                                ).apply {
-                                    timeZone = TimeZone.getTimeZone("Europe/Berlin")
-                                }.format(Date())
-
-                                val newMessageObj = ChatMessage(user = userName, message = newMessage, timestamp = timestamp)
-                                chatMessages = chatMessages + newMessageObj // Füge die neue Nachricht lokal hinzu
-                                newMessage = ""
-
-                                // Nachricht in Firestore speichern
-                                FirebaseFirestore.getInstance().collection("messages")
-                                    .add(newMessageObj)
-                            },
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Senden",
-                                tint = Color(0xFF318DFF)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Senden",
+                            tint = Color(0xFF318DFF)
+                        )
                     }
                 }
             }
         }
     }
+}
 
-    @Composable
-    fun ChatBubble(message: ChatMessage, isOwnMessage: Boolean) {
-        val backgroundColor = if (isOwnMessage) Color(0xFF318DFF) else Color.White
-        val textColor = if (isOwnMessage) Color.White else Color.Black
+@Composable
+fun ChatBubble(message: ChatMessage, isOwnMessage: Boolean) {
+    val backgroundColor = if (isOwnMessage) Color(0xFF318DFF) else Color.White
+    val textColor = if (isOwnMessage) Color.White else Color.Black
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(8.dp)
+                .background(backgroundColor, shape = RoundedCornerShape(16.dp))
+                .padding(8.dp)
+                .widthIn(max = 250.dp),
+            horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .background(backgroundColor, shape = RoundedCornerShape(16.dp))
-                    .padding(8.dp)
-                    .widthIn(max = 250.dp),
-                horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
-            ) {
-                Text(
-                    text = message.user,  // "user" statt "sender"
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = if (isOwnMessage) Color.White else Color(0xFF318DFF)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = message.message,
-                    fontSize = 16.sp,
-                    color = textColor
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = message.timestamp,
-                    fontSize = 12.sp,
-                    color = textColor
-                )
-            }
+            Text(
+                text = message.user,  // "user" statt "sender"
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = if (isOwnMessage) Color.White else Color(0xFF318DFF)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = message.message,
+                fontSize = 16.sp,
+                color = textColor
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = message.timestamp,
+                fontSize = 12.sp,
+                color = textColor
+            )
         }
     }
 }

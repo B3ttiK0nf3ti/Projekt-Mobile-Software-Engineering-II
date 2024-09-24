@@ -4,7 +4,6 @@ import GameScheduleScreen
 import android.Manifest
 import android.app.AlertDialog
 import android.content.ContentResolver
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
@@ -15,8 +14,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,7 +31,7 @@ class MainActivity : ComponentActivity() {
     private val calendarEvents = mutableStateListOf<Pair<String, String>>() // Zustand für Kalenderereignisse
 
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(UserRepository(AppDatabaseHelper(this)))
+        MainViewModelFactory(UserRepository(AppDatabaseHelper()), this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
