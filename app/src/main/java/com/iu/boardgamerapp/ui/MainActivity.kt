@@ -1,9 +1,10 @@
 package com.iu.boardgamerapp.ui
 
-import GameScheduleScreen
+import GameScheduleActivity
 import android.Manifest
 import android.app.AlertDialog
 import android.content.ContentResolver
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
@@ -37,10 +38,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Register permission request launcher
+        // Registrierung des Permission Request Launchers
         requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                fetchCalendarEvents()
+                fetchCalendarEvents() // Holen Sie sich die Kalenderereignisse, wenn die Berechtigung erteilt ist
             } else {
                 Log.d("MainActivity", "Calendar permission denied")
             }
@@ -69,14 +70,11 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             navController = navController,
                             onShowUserListDialog = { showUserListDialog() },
-                            onRotateHost = { rotateHost() }
-                        )
-                    }
-                    composable("game_schedule") {
-                        GameScheduleScreen(
-                            gameDates = calendarEvents,
-                            navController = navController,
-                            fetchCalendarEvents = { fetchCalendarEvents() }
+                            onRotateHost = { rotateHost() },
+                            onNavigateToGameSchedule = {
+                                // Navigiere zu GameScheduleActivity
+                                startActivity(Intent(this@MainActivity, GameScheduleActivity::class.java))
+                            }
                         )
                     }
                 }

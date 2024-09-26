@@ -40,7 +40,8 @@ fun MainScreen(
     viewModel: MainViewModel,
     navController: NavController,
     onShowUserListDialog: () -> Unit,
-    onRotateHost: () -> Unit
+    onRotateHost: () -> Unit,
+    onNavigateToGameSchedule: () -> Unit
 ) {
     val userName by viewModel.userName.observeAsState("")
     val userExists by viewModel.userExists.observeAsState(false)
