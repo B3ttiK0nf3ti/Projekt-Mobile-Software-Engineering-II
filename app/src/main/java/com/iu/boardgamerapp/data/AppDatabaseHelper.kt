@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 
 class AppDatabaseHelper {
 
@@ -12,6 +13,7 @@ class AppDatabaseHelper {
     companion object {
         private const val TAG = "AppDatabaseHelper"
         const val USERS_COLLECTION = "user"
+        const val CALENDAR_EVENTS_COLLECTION = "calendarEvents" // Neue Konstante für Kalenderereignisse
     }
 
     // Benutzer hinzufügen
@@ -67,6 +69,33 @@ class AppDatabaseHelper {
             .addOnFailureListener { e ->
                 Log.w(TAG, "Error checking user existence", e)
                 onComplete(false)
+            }
+    }
+
+    // Ereignisse in Firestore speichern
+    fun addCalendarEvent(event: CalendarEvent, onComplete: (Boolean) -> Unit) {
+        db.collection(CALENDAR_EVENTS_COLLECTION).add(event)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "Calendar Event added with ID: ${documentReference.id}")
+                onComplete(true)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error adding Calendar Event", e)
+                onComplete(false)
+            }
+    }
+    // Kalenderereignisse abrufen
+    fun fetchCalendarEvents(onComplete: (List<CalendarEvent>) -> Unit) {
+        db.collection(CALENDAR_EVENTS_COLLECTION).get()
+            .addOnSuccessListener { documents ->
+                val events = documents.map { document ->
+                    document.toObject(CalendarEvent::class.java)
+                }
+                onComplete(events)
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error getting Calendar Events", e)
+                onComplete(emptyList())
             }
     }
 }

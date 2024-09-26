@@ -59,10 +59,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.material:material-icons-core:1.5.3")
-    implementation("androidx.compose.material:material-icons-extended:1.5.3")
-    implementation("androidx.compose.runtime:runtime-livedata:1.5.0") // oder die neueste Version
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")  // oder die neueste Version
+    implementation("androidx.compose.material:material-icons-core:1.7.2")
+    implementation("androidx.compose.material:material-icons-extended:1.7.2")
+    implementation("androidx.compose.runtime:runtime-livedata:1.7.2") // oder die neueste Version
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.6")  // oder die neueste Version
     implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.30.1")
@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.foundation.android)  // oder die neueste Version
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1,6 +1,7 @@
-package com.iu.boardgamerapp.ui;
+package com.iu.boardgamerapp.ui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -31,13 +32,21 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
+import com.iu.boardgamerapp.data.AppDatabaseHelper
+import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 
 class GameScheduleActivity : ComponentActivity() {
 
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var appDatabaseHelper: AppDatabaseHelper
+
+    // MutableStateList für die Kalenderereignisse
+    private val calendarEvents = mutableStateListOf<CalendarEvent>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Instanziiere den AppDatabaseHelper
+        appDatabaseHelper = AppDatabaseHelper()
 
         // Registrierung des ActivityResultLaunchers für die Kalenderberechtigung
         requestPermissionLauncher = registerForActivityResult(
@@ -45,24 +54,22 @@ class GameScheduleActivity : ComponentActivity() {
         ) { isGranted: Boolean ->
             if (isGranted) {
                 Log.d("GameScheduleActivity", "Calendar permission granted")
+                fetchCalendarEventsFromFirestore(calendarEvents) // Abrufen der Ereignisse
             } else {
                 Log.d("GameScheduleActivity", "Calendar permission denied")
             }
         }
 
         setContent {
-            GameScheduleScreen()
+            GameScheduleScreen(calendarEvents) // calendarEvents wird hier übergeben
         }
     }
 
     @Composable
-    fun GameScheduleScreen() {
+    fun GameScheduleScreen(calendarEvents: MutableList<CalendarEvent>) {
         var isRefreshing by remember { mutableStateOf(false) }
         val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
         val coroutineScope = rememberCoroutineScope()
-
-        // Kalenderereignisse als MutableStateList definieren
-        val calendarEvents = remember { mutableStateListOf<Pair<String, String>>() }
 
         LaunchedEffect(Unit) {
             // Kalenderereignisse beim ersten Rendern abrufen
@@ -79,7 +86,7 @@ class GameScheduleActivity : ComponentActivity() {
                     isRefreshing = true
                     coroutineScope.launch(Dispatchers.IO) {
                         // Kalenderereignisse abrufen (im Hintergrund)
-                        fetchCalendarEvents(calendarEvents)
+                        fetchCalendarEvents(calendarEvents) // Kalenderereignisse abrufen
                         isRefreshing = false
                     }
                 }
@@ -126,7 +133,6 @@ class GameScheduleActivity : ComponentActivity() {
                     ) {
                         Text(text = "Gerätekalender öffnen", color = Color.White)
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Spieltermine in einer LazyColumn anzeigen
@@ -137,8 +143,8 @@ class GameScheduleActivity : ComponentActivity() {
                             .padding(8.dp)
                     ) {
                         items(calendarEvents.size) { index ->
-                            val (date, location) = calendarEvents[index]
-                            ScheduleItem(date = date, location = location)
+                            val event = calendarEvents[index]
+                            ScheduleItem(date = formatDate(event.startTime), location = event.location)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -148,20 +154,25 @@ class GameScheduleActivity : ComponentActivity() {
                     // Button, um ein Ereignis hinzuzufügen
                     Button(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_INSERT).apply {
-                                data = CalendarContract.Events.CONTENT_URI
-                                putExtra(CalendarContract.Events.TITLE, "Brettspielabend")
-                                putExtra(CalendarContract.Events.EVENT_LOCATION, "Bei Alex")
-                                putExtra(
-                                    CalendarContract.EXTRA_EVENT_BEGIN_TIME,
-                                    System.currentTimeMillis() + 24 * 60 * 60 * 1000
-                                )
-                                putExtra(
-                                    CalendarContract.EXTRA_EVENT_END_TIME,
-                                    System.currentTimeMillis() + 26 * 60 * 60 * 1000
-                                )
+                            val newEvent = CalendarEvent(
+                                title = "Brettspielabend",
+                                startTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000, // In einem Tag
+                                endTime = System.currentTimeMillis() + 26 * 60 * 60 * 1000, // In einem Tag und 2 Stunden
+                                location = "Bei Alex"
+                            )
+
+                            // Ereignis in den lokalen Kalender hinzufügen
+                            addEventToCalendar(newEvent)
+
+                            // Ereignis in Firestore hinzufügen
+                            appDatabaseHelper.addCalendarEvent(newEvent) { success ->
+                                if (success) {
+                                    Log.d("GameScheduleActivity", "Kalenderereignis erfolgreich hinzugefügt.")
+                                    calendarEvents.add(newEvent) // Aktualisiere die UI mit dem CalendarEvent
+                                } else {
+                                    Log.e("GameScheduleActivity", "Fehler beim Hinzufügen des Kalenderereignisses.")
+                                }
                             }
-                            startActivity(intent)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
                         modifier = Modifier.fillMaxWidth().padding(8.dp)
@@ -173,20 +184,40 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndFetchCalendarEvents(calendarEvents: MutableList<Pair<String, String>>) {
+    private fun checkAndFetchCalendarEvents(calendarEvents: MutableList<CalendarEvent>) {
         if (ContextCompat.checkSelfPermission(
                 this, Manifest.permission.READ_CALENDAR
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             // Berechtigung erteilt, Kalenderdaten abrufen
-            fetchCalendarEvents(calendarEvents)
+            fetchCalendarEventsFromFirestore(calendarEvents)
         } else {
             // Berechtigung anfordern
             requestPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
         }
     }
 
-    private fun fetchCalendarEvents(calendarEvents: MutableList<Pair<String, String>>) {
+    private fun fetchCalendarEventsFromFirestore(calendarEvents: MutableList<CalendarEvent>) {
+        appDatabaseHelper.fetchCalendarEvents { events ->
+            // UI mit den abgerufenen Firestore-Ereignissen aktualisieren
+            calendarEvents.clear()
+            calendarEvents.addAll(events)
+        }
+    }
+
+    private fun addEventToCalendar(event: CalendarEvent) {
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, event.title)
+            putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startTime)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.endTime)
+        }
+        startActivity(intent)
+    }
+
+    @SuppressLint("Range")
+    private fun fetchCalendarEvents(calendarEvents: MutableList<CalendarEvent>) {
         val contentResolver: ContentResolver = contentResolver
         val uri = CalendarContract.Events.CONTENT_URI
 
@@ -199,11 +230,13 @@ class GameScheduleActivity : ComponentActivity() {
             timeInMillis
         }
 
+        // Alle notwendigen Spalten angeben
         val projection = arrayOf(
             CalendarContract.Events._ID,
             CalendarContract.Events.TITLE,
             CalendarContract.Events.DTSTART,
-            CalendarContract.Events.DTEND
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.EVENT_LOCATION // Standort hinzufügen, falls benötigt
         )
 
         val selection =
@@ -222,6 +255,7 @@ class GameScheduleActivity : ComponentActivity() {
             val idIndex = cursor.getColumnIndex(CalendarContract.Events._ID)
             val titleIndex = cursor.getColumnIndex(CalendarContract.Events.TITLE)
             val startIndex = cursor.getColumnIndex(CalendarContract.Events.DTSTART)
+            val endIndex = cursor.getColumnIndex(CalendarContract.Events.DTEND) // Endzeit-Index hinzufügen
 
             // Kalenderereignisse in der Liste speichern
             calendarEvents.clear()
@@ -229,18 +263,26 @@ class GameScheduleActivity : ComponentActivity() {
             while (cursor.moveToNext()) {
                 val title = cursor.getString(titleIndex)
                 val start = cursor.getLong(startIndex)
+                val end = cursor.getLong(endIndex) // Endzeit abrufen
 
-                // Formatierte Datum und Ereignisse hinzufügen
+                // Ereignis als CalendarEvent hinzufügen
                 calendarEvents.add(
-                    java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(
-                        Date(start)
-                    ) to title
+                    CalendarEvent(
+                        title = title,
+                        startTime = start,
+                        endTime = end, // Endzeit verwenden
+                        location = cursor.getString(cursor.getColumnIndex(CalendarContract.Events.EVENT_LOCATION)) ?: "" // Standort optional
+                    )
                 )
             }
             cursor.close() // Cursor schließen
         } else {
             Log.d("GameScheduleActivity", "Cursor ist null, keine Kalenderereignisse gefunden.")
         }
+    }
+
+    private fun formatDate(timestamp: Long): String {
+        return java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 
     @Composable
