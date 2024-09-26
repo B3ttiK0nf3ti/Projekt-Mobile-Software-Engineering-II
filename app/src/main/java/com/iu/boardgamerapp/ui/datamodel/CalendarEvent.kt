@@ -4,6 +4,7 @@ import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.PropertyName
 import kotlinx.serialization.Serializable
 
+@Serializable
 data class CalendarEvent(
     @DocumentId
     val id: String? = null,

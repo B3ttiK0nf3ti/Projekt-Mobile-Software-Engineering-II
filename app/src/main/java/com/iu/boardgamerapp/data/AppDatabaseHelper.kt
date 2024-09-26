@@ -74,28 +74,40 @@ class AppDatabaseHelper {
 
     // Ereignisse in Firestore speichern
     fun addCalendarEvent(event: CalendarEvent, onComplete: (Boolean) -> Unit) {
-        db.collection(CALENDAR_EVENTS_COLLECTION).add(event)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "Calendar Event added with ID: ${documentReference.id}")
+        db.collection("events")
+            .add(event)
+            .addOnSuccessListener {
                 onComplete(true)
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding Calendar Event", e)
+                Log.e("AppDatabaseHelper", "Error adding document", e)
                 onComplete(false)
             }
     }
     // Kalenderereignisse abrufen
-    fun fetchCalendarEvents(onComplete: (List<CalendarEvent>) -> Unit) {
-        db.collection(CALENDAR_EVENTS_COLLECTION).get()
+    fun fetchCalendarEvents(onEventsFetched: (List<CalendarEvent>) -> Unit) {
+        db.collection("events")
+            .get()
             .addOnSuccessListener { documents ->
-                val events = documents.map { document ->
-                    document.toObject(CalendarEvent::class.java)
+                val events = mutableListOf<CalendarEvent>()
+                for (document in documents) {
+                    val title = document.getString("title") ?: ""
+                    val startTime = document.getLong("start_time") ?: 0L
+                    val endTime = document.getLong("end_time") ?: 0L
+                    val location = document.getString("location") ?: "" // Default auf leeren String
+
+                    // Überprüfen, ob die Variablen gültig sind
+                    if (title.isNotEmpty() && startTime > 0 && endTime > 0) {
+                        events.add(CalendarEvent(document.id, title, startTime, endTime, location))
+                    } else {
+                        Log.w("AppDatabaseHelper", "Invalid data for document: ${document.id}. Title: '$title', Start Time: $startTime, End Time: $endTime, Location: '$location'")
+                    }
                 }
-                onComplete(events)
+                onEventsFetched(events)
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error getting Calendar Events", e)
-                onComplete(emptyList())
+            .addOnFailureListener { exception ->
+                Log.e("AppDatabaseHelper", "Error getting documents: ", exception)
+                onEventsFetched(emptyList())
             }
     }
 }
