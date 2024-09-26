@@ -62,13 +62,13 @@ class HostRotationActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
-        // Observe user list
         val userList by viewModel.userList.observeAsState(emptyList())
-        val users = viewModel.getUsers() // Converted user list
+        val users = viewModel.getUsers() // Umgewandelte Benutzerliste
+        val currentHost = viewModel.getCurrentHost()
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFE0E0E0) // Light gray background
+            color = Color(0xFFE0E0E0) // Hellgrauer Hintergrund
         ) {
             Column(
                 modifier = Modifier
@@ -76,7 +76,7 @@ class HostRotationActivity : ComponentActivity() {
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // TopAppBar
+                // TopAppBar im gleichen Stil wie GameScheduleActivity
                 CenterAlignedTopAppBar(
                     title = { Text("Gastgeberwechsel", fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = {
@@ -84,12 +84,33 @@ class HostRotationActivity : ComponentActivity() {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück", tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF318DFF)) // Gleiche blaue Farbe verwenden
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // User list in a LazyColumn
+                // Aktuellen Gastgeber anzeigen
+                Text(
+                    text = "Aktueller Gastgeber: $currentHost",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Black
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Button zum Wechseln des Gastgebers
+                Button(
+                    onClick = { viewModel.navigateToHostRotation() }, // Die entsprechende Methode aufrufen
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
+                    modifier = Modifier.fillMaxWidth().padding(8.dp)
+                ) {
+                    Text(text = "Gastgeber ändern", color = Color.White)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Benutzerliste in einer LazyColumn anzeigen
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -99,19 +120,22 @@ class HostRotationActivity : ComponentActivity() {
                     items(users.size) { index ->
                         val user = users[index]
                         UserItem(user) { selectedUser ->
-                            // Change host and return to home screen
-                            viewModel.changeHost(selectedUser.name) // Function to change the host
-                            finish()  // Closes the Activity
+                            // Gastgeber wechseln und zur Startseite zurückkehren
+                            viewModel.changeHost(selectedUser.name) // Funktion zum Wechseln des Gastgebers
+                            finish()  // Schließt die Activity
                         }
-
-                    Spacer(modifier = Modifier.height(16.dp)) // Adjust the height as needed
-                }
+                        Spacer(modifier = Modifier.height(16.dp)) // Fügt Platz zwischen den Benutzer-Items hinzu
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+                    }
+
+
 
             }
-        }
+
     }
 
     @Composable

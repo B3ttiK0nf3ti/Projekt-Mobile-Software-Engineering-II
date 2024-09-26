@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.iu.boardgamerapp.ui.datamodel.User
 
 class UserRepository(private val databaseHelper: AppDatabaseHelper) {
 
@@ -47,9 +48,26 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
-    fun getUserByName(userName: String, callback: (Pair<String, Boolean>?) -> Unit) {
-        // Implementiere die Logik, um den Benutzer aus der Datenbank abzurufen
-        // und rufe den Callback mit dem Ergebnis auf.
+    fun getUserByName(name: String, callback: (User?) -> Unit) {
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("name", name)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { result ->
+                if (!result.isEmpty) {
+                    val document = result.documents[0]
+                    val userId = document.id // ID des Dokuments in der Datenbank
+                    val userName = document.getString("name") ?: ""
+                    val isHost = document.getBoolean("isHost") ?: false
+                    callback(User(userId, userName, isHost)) // Benutzer mit ID zurückgeben
+                } else {
+                    callback(null) // Benutzer nicht gefunden
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Fehler beim Abrufen des Benutzers mit dem Namen: $name", e)
+                callback(null) // Rückgabe von null im Fehlerfall
+            }
     }
 
     // Funktion, die eine LiveData-Liste von Benutzern zurückgibt

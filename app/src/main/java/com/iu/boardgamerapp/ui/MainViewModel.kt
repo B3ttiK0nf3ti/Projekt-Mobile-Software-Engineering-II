@@ -39,16 +39,26 @@ class MainViewModel(
     private val _showGameSelectionDialog = MutableLiveData<Boolean>(false)
     val showGameSelectionDialog: LiveData<Boolean> = _showGameSelectionDialog
 
-    private val _currentHost = MutableLiveData<String>()
-    val currentHost: LiveData<String> = _currentHost
+    private val _currentHost = MutableLiveData<String?>()
+    val currentHost: LiveData<String?> get() = _currentHost
 
     private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
     val userList: LiveData<List<Pair<String, Boolean>>> = userRepository.getUserList()
+
+    // Callback für die Navigation
+    var onNavigateToHostRotation: (() -> Unit)? = null
+
+    private var currentHostName: String? = null
 
     init {
         loadUserName()
         loadCurrentHost()
         loadUsers()
+    }
+
+    // Methode zum Abrufen des aktuellen Gastgebers
+    fun getCurrentHost(): String {
+        return currentHostName ?: "Kein Gastgeber gesetzt" // Rückgabe eines Standardwerts, falls kein Gastgeber gesetzt ist
     }
 
     fun getUsers(): List<User> {
@@ -69,7 +79,7 @@ class MainViewModel(
         }
     }
 
-    private fun saveUserNameToPreferences(name: String) {
+    fun saveUserNameToPreferences(name: String) {
         sharedPreferences.edit().putString("user_name", name).apply()
     }
 
@@ -79,7 +89,7 @@ class MainViewModel(
         _userExists.value = false
     }
 
-    private fun loadUserName() {
+    fun loadUserName() {
         val savedUserName = sharedPreferences.getString("user_name", "") ?: "" // Fallback zu leerem String
         _userName.value = savedUserName
         if (savedUserName.isNotEmpty()) {
@@ -98,26 +108,26 @@ class MainViewModel(
         }
     }
 
-    private fun loadCurrentHost() {
-        userRepository.getCurrentHostName { hostName -> // Ändere hier 'repository' in 'userRepository'
-            _currentHost.value = hostName ?: "" // Fallback zu leerem String
-            Log.d("ViewModel", "Aktueller Host geladen: ${_currentHost.value}")
+    fun loadCurrentHost() {
+        // Abrufen des aktuellen Gastgebers
+        userRepository.getCurrentHostName { hostName ->
+            _currentHost.value = hostName // Aktualisiere den aktuellen Gastgeber
         }
     }
 
     fun loadUsers() {
-        userRepository.getAllUsers { users -> // Ändere hier 'repository' in 'userRepository'
-            _userList.value = users
-            Log.d("ViewModel", "Benutzerliste geladen: ${users.joinToString()}")
+        // Implementiere die Logik zum Laden der Benutzer
+        userRepository.getAllUsers { users ->
+            _userList.value = users // Speichern der Benutzerliste in der LiveData-Variable
         }
     }
 
     fun changeHost(newHostName: String) {
         // Suche nach dem neuen Gastgeber in der Benutzerdatenbank
         userRepository.getUserByName(newHostName) { user ->
-            user?.let { (name, isHost) ->
+            user?.let {
                 // Setze den neuen Gastgeber in der Datenbank
-                userRepository.updateHostStatus(name) // Aktualisiere den Status des neuen Gastgebers
+                userRepository.updateHostStatus(it.name) // Aktualisiere den Status des neuen Gastgebers
                 loadCurrentHost() // Lade den aktuellen Gastgeber neu
                 loadUsers() // Benutzerliste neu laden
             } ?: run {
@@ -125,7 +135,6 @@ class MainViewModel(
             }
         }
     }
-    
 
     fun voteForGame(game: String) {
         val updatedVotes = _votes.value?.toMutableMap() ?: mutableMapOf()
@@ -168,5 +177,10 @@ class MainViewModel(
 
     fun toggleGameSelectionDialog() {
         _showGameSelectionDialog.value = _showGameSelectionDialog.value?.not() ?: true
+    }
+
+    // Neue Methode für die Navigation zur HostRotationActivity
+    fun navigateToHostRotation() {
+        onNavigateToHostRotation?.invoke()
     }
 }
