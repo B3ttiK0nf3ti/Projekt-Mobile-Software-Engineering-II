@@ -1,6 +1,8 @@
 package com.iu.boardgamerapp.data
 
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -44,6 +46,23 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                 onComplete(null)
             }
     }
+
+    // Funktion, die eine LiveData-Liste von Benutzern zurückgibt
+    fun getUserList(): LiveData<List<Pair<String, Boolean>>> {
+        val userList = MutableLiveData<List<Pair<String, Boolean>>>()
+
+        // Hier kannst du deine Logik einfügen, um die Benutzer zu laden
+        // Zum Beispiel aus einer Datenbank oder einer API.
+        // Dies ist ein Platzhalter für die tatsächliche Implementierung:
+        userList.value = listOf(
+            Pair("Benutzer 1", false),
+            Pair("Benutzer 2", true),
+            Pair("Benutzer 3", false)
+        )
+
+        return userList
+    }
+
 
 
     // Alle Benutzer abrufen

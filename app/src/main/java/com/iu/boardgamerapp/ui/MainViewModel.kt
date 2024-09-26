@@ -8,11 +8,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
+import com.iu.boardgamerapp.ui.datamodel.User
 
 class MainViewModel(
-    private val repository: UserRepository,
+    private val userRepository: UserRepository,
     private val databaseHelper: AppDatabaseHelper,
-    context: Context
+    private val context: Context
 ) : ViewModel() {
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
@@ -42,12 +43,18 @@ class MainViewModel(
     val currentHost: LiveData<String> = _currentHost
 
     private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
-    val userList: LiveData<List<Pair<String, Boolean>>> = _userList
+    val userList: LiveData<List<Pair<String, Boolean>>> = userRepository.getUserList()
 
     init {
         loadUserName()
         loadCurrentHost()
         loadUsers()
+    }
+
+    fun getUsers(): List<User> {
+        return userList.value?.mapIndexed { index, (name, isHost) ->
+            User(id = index.toString(), name = name, isHost = isHost)
+        } ?: emptyList()
     }
 
     fun saveUser(name: String) {
@@ -92,14 +99,14 @@ class MainViewModel(
     }
 
     private fun loadCurrentHost() {
-        repository.getCurrentHostName { hostName ->
-            _currentHost.value = hostName ?: "" // Fallback zu leerem String, falls hostName null ist
+        userRepository.getCurrentHostName { hostName -> // Ändere hier 'repository' in 'userRepository'
+            _currentHost.value = hostName ?: "" // Fallback zu leerem String
             Log.d("ViewModel", "Aktueller Host geladen: ${_currentHost.value}")
         }
     }
 
     fun loadUsers() {
-        repository.getAllUsers { users ->
+        userRepository.getAllUsers { users -> // Ändere hier 'repository' in 'userRepository'
             _userList.value = users
             Log.d("ViewModel", "Benutzerliste geladen: ${users.joinToString()}")
         }
@@ -109,7 +116,7 @@ class MainViewModel(
         _userList.value?.let { users ->
             val newHost = users.find { it.first == newHostName }
             if (newHost != null) {
-                repository.updateHostStatus(newHost.first) // Setze den neuen Gastgeber
+                userRepository.updateHostStatus(newHost.first) // Setze den neuen Gastgeber
                 loadCurrentHost() // Lade den aktuellen Gastgeber neu
                 loadUsers() // Benutzerliste neu laden
             }
@@ -132,9 +139,9 @@ class MainViewModel(
                 val nextHost = users[nextHostIndex]
 
                 // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
-                repository.updateHostStatus(users[currentHostIndex].first) // Übergibt den Namen
+                userRepository.updateHostStatus(users[currentHostIndex].first) // Übergibt den Namen
                 // Den nächsten Gastgeber auf "Gastgeber" setzen
-                repository.updateHostStatus(nextHost.first) // Übergibt den Namen
+                userRepository.updateHostStatus(nextHost.first) // Übergibt den Namen
                 loadCurrentHost() // Aktuellen Gastgeber neu laden
                 loadUsers() // Benutzerliste neu laden
             }
