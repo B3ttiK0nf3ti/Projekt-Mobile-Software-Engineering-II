@@ -28,7 +28,6 @@ import androidx.core.content.ContextCompat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
-    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private val calendarEvents = mutableStateListOf<Pair<String, String>>() // Zustand für Kalenderereignisse
 
     private val viewModel: MainViewModel by viewModels {
@@ -37,15 +36,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Registrierung des Permission Request Launchers
-        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                fetchCalendarEvents() // Holen Sie sich die Kalenderereignisse, wenn die Berechtigung erteilt ist
-            } else {
-                Log.d("MainActivity", "Calendar permission denied")
-            }
-        }
 
         // Observer für die Benutzerliste
         viewModel.loadUsers() // Lade die Benutzerliste
@@ -79,17 +69,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Check and request calendar permission
-                LaunchedEffect(Unit) {
-                    when {
-                        ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED -> {
-                            fetchCalendarEvents()
-                        }
-                        else -> {
-                            requestPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-                        }
-                    }
-                }
+
             }
         }
     }
@@ -123,58 +103,6 @@ class MainActivity : ComponentActivity() {
         dialog.show()
     }
 
-    private fun fetchCalendarEvents() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-            val contentResolver: ContentResolver = contentResolver
-            val uri = CalendarContract.Events.CONTENT_URI
 
-            val startMillis: Long = Calendar.getInstance().run {
-                timeInMillis
-            }
-
-            val endMillis: Long = Calendar.getInstance().run {
-                add(Calendar.YEAR, 1)
-                timeInMillis
-            }
-
-            val projection = arrayOf(
-                CalendarContract.Events._ID,
-                CalendarContract.Events.TITLE,
-                CalendarContract.Events.DTSTART,
-                CalendarContract.Events.DTEND
-            )
-
-            val selection = "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
-            val selectionArgs = arrayOf(startMillis.toString(), "%Brettspielabend%")
-
-            val cursor = contentResolver.query(
-                uri,
-                projection,
-                selection,
-                selectionArgs,
-                "${CalendarContract.Events.DTSTART} ASC"
-            )
-
-            cursor?.use {
-                val idIndex = it.getColumnIndex(CalendarContract.Events._ID)
-                val titleIndex = it.getColumnIndex(CalendarContract.Events.TITLE)
-                val startIndex = it.getColumnIndex(CalendarContract.Events.DTSTART)
-
-                calendarEvents.clear()
-
-                while (it.moveToNext()) {
-                    val id = it.getLong(idIndex)
-                    val title = it.getString(titleIndex)
-                    val start = it.getLong(startIndex)
-
-                    // Datum formatieren und direkt zur Liste hinzufügen
-                    calendarEvents.add(
-                        java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(start)) to title
-                    )
-                }
-            }
-        } else {
-            Log.d("MainActivity", "Calendar permission not granted")
-        }
     }
-}
+

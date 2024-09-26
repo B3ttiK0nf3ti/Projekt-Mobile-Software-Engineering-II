@@ -204,7 +204,8 @@ class GameScheduleActivity : ComponentActivity() {
             CalendarContract.Events.DTEND
         )
 
-        val selection = "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
+        val selection =
+            "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
         val selectionArgs = arrayOf(startMillis.toString(), "%Brettspielabend%")
 
         val cursor = contentResolver.query(
@@ -215,17 +216,17 @@ class GameScheduleActivity : ComponentActivity() {
             "${CalendarContract.Events.DTSTART} ASC"
         )
 
-        cursor?.use {
-            val idIndex = it.getColumnIndex(CalendarContract.Events._ID)
-            val titleIndex = it.getColumnIndex(CalendarContract.Events.TITLE)
-            val startIndex = it.getColumnIndex(CalendarContract.Events.DTSTART)
+        if (cursor != null) { // Überprüfen, ob der Cursor nicht null ist
+            val idIndex = cursor.getColumnIndex(CalendarContract.Events._ID)
+            val titleIndex = cursor.getColumnIndex(CalendarContract.Events.TITLE)
+            val startIndex = cursor.getColumnIndex(CalendarContract.Events.DTSTART)
 
             // Kalenderereignisse in der Liste speichern
             calendarEvents.clear()
 
-            while (it.moveToNext()) {
-                val title = it.getString(titleIndex)
-                val start = it.getLong(startIndex)
+            while (cursor.moveToNext()) {
+                val title = cursor.getString(titleIndex)
+                val start = cursor.getLong(startIndex)
 
                 // Formatierte Datum und Ereignisse hinzufügen
                 calendarEvents.add(
@@ -234,29 +235,32 @@ class GameScheduleActivity : ComponentActivity() {
                     ) to title
                 )
             }
+            cursor.close() // Cursor schließen
+        } else {
+            Log.d("GameScheduleActivity", "Cursor ist null, keine Kalenderereignisse gefunden.")
         }
     }
-}
 
-@Composable
-fun ScheduleItem(date: String, location: String) {
-    Column(
-        modifier = Modifier
-            .background(Color.White, shape = RoundedCornerShape(8.dp))
-            .padding(16.dp)
-            .fillMaxWidth()
-    ) {
-        Text(
-            text = "Datum: $date",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Color(0xFF318DFF) // Blau für Titel
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Ort: $location",
-            fontSize = 14.sp,
-            color = Color.Black
-        )
+    @Composable
+    fun ScheduleItem(date: String, location: String) {
+        Column(
+            modifier = Modifier
+                .background(Color.White, shape = RoundedCornerShape(8.dp))
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = "Datum: $date",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF318DFF) // Blau für Titel
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Ort: $location",
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+        }
     }
 }
