@@ -76,7 +76,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation("androidx.appcompat:appcompat:1.6.1") // Aktuelle Version verwenden
     implementation("androidx.compose.ui:ui:1.4.0") // Beispiel für Compose
-    implementation("androidx.activity:activity-compose:1.7.0") // Beispiel für Activity Compose
+    implementation("androidx.activity:activity-compose:1.7.0")
+    implementation(libs.firebase.database.ktx) // Beispiel für Activity Compose
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

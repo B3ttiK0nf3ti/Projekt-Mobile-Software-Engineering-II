@@ -109,8 +109,8 @@ class MainViewModel(
     }
 
     fun loadCurrentHost() {
-        // Abrufen des aktuellen Gastgebers
         userRepository.getCurrentHostName { hostName ->
+            Log.d("MainViewModel", "Aktueller Gastgeber abgerufen: $hostName")
             _currentHost.value = hostName // Aktualisiere den aktuellen Gastgeber
         }
     }

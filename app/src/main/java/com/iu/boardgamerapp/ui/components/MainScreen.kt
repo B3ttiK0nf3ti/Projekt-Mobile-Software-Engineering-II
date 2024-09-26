@@ -114,12 +114,6 @@ fun MainScreen(
             steps = 4
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Button zum Rotieren des Hosts
-        Button(onClick = { onNavigateToHostRotation() }) {
-            Text("Gastgeber wechseln")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

@@ -3,10 +3,14 @@ package com.iu.boardgamerapp.data
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.iu.boardgamerapp.ui.datamodel.User
+import com.google.firebase.database.ValueEventListener
 
 class UserRepository(private val databaseHelper: AppDatabaseHelper) {
 
@@ -135,20 +139,18 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
     }
 
     // Den aktuellen Host abrufen
-    fun getCurrentHostName(onComplete: (String?) -> Unit) {
-        db.collection(USERS_COLLECTION)
-            .whereEqualTo("isHost", true)
-            .limit(1)
-            .get()
-            .addOnSuccessListener { result ->
-                for (document in result) {
-                    onComplete(document.getString("name"))
-                }
-                onComplete(null) // Rückgabe von null, wenn kein Host vorhanden ist
+    fun getCurrentHostName(callback: (String?) -> Unit) {
+        val dbRef = FirebaseDatabase.getInstance().getReference("hosts") // Beispiel-Pfad
+        dbRef.child("currentHost").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val hostName = snapshot.getValue(String::class.java)
+                callback(hostName)
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Fehler beim Abrufen des aktuellen Gastgebers", e)
-                onComplete(null)
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.w("UserRepository", "loadHost:onCancelled", error.toException())
+                callback(null) // Fehlerfall
             }
-    }
+    })
+}
 }
