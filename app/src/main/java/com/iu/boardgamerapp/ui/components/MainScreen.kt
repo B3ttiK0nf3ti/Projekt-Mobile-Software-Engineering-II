@@ -40,9 +40,8 @@ import com.iu.boardgamerapp.ui.UserNameInputDialog
 fun MainScreen(
     viewModel: MainViewModel,
     navController: NavController,
-    onShowUserListDialog: () -> Unit,
-    onRotateHost: () -> Unit,
-    onNavigateToGameSchedule: () -> Unit
+    onNavigateToGameSchedule: () -> Unit,
+    onNavigateToHostRotation: () -> Unit
 ) {
     val userName by viewModel.userName.observeAsState("")
     val userExists by viewModel.userExists.observeAsState(false)
@@ -73,104 +72,92 @@ fun MainScreen(
         )
     }
 
-    // Dialog für den Gastgeber
-    if (showHostDialog) {
-        UserNameInputDialog(
-            onNameEntered = { name ->
-                viewModel.changeHost(name) // Neuen Gastgeber setzen
-                showHostDialog = false
-            },
-            onDismiss = { showHostDialog = false }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Willkommen, ${userName ?: "Gast"}!")
+        Spacer(modifier = Modifier.height(16.dp))
+        DateDisplay(date = "12.09.2024")
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Button zum Aufrufen der GameChoosingActivity
+        Button(onClick = {
+            val intent = Intent(context, GameChoosingActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Abstimmen")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Aktueller Gastgeber: $currentHost") // Zeige den aktuellen Gastgeber an
+
+        Button(onClick = { onNavigateToHostRotation() }) {
+            Text("Gastgeber ändern")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        BoxWithBorder(content = "Ort: Bei Alex")
+        Spacer(modifier = Modifier.height(16.dp))
+        BoxWithBorder(content = "Essen: Pizza")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Bewertung: $rating")
+        Slider(
+            value = rating.toFloat(),
+            onValueChange = { viewModel.updateRating(it.toInt()) },
+            valueRange = 0f..5f,
+            steps = 4
         )
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Button zum Rotieren des Hosts
+        Button(onClick = { onNavigateToHostRotation() }) {
+            Text("Gastgeber wechseln")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Text("Willkommen, ${userName ?: "Gast"}!")
-            Spacer(modifier = Modifier.height(16.dp))
-            DateDisplay(date = "12.09.2024")
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Button zum Aufrufen der GameChoosingActivity
-            Button(onClick = {
-                val intent = Intent(context, GameChoosingActivity::class.java)
-                context.startActivity(intent)
-            }) {
-                Text("Abstimmen")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Aktueller Gastgeber: $currentHost") // Zeige den aktuellen Gastgeber an
-
-            Button(onClick = { onShowUserListDialog() }) {
-                Text("Gastgeber ändern")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            BoxWithBorder(content = "Ort: Bei Alex")
-            Spacer(modifier = Modifier.height(16.dp))
-            BoxWithBorder(content = "Essen: Pizza")
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Bewertung: $rating")
-            Slider(
-                value = rating.toFloat(),
-                onValueChange = { viewModel.updateRating(it.toInt()) },
-                valueRange = 0f..5f,
-                steps = 4
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Button zum Rotieren des Hosts
-            Button(onClick = { onRotateHost() }) {
-                Text("Gastgeber wechseln")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier.fillMaxSize(),
+            // Kalender-Symbol links unten
+            IconButton(
+                onClick = {
+                    onNavigateToGameSchedule() // Nutzung des Callback
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
             ) {
-                // Kalender-Symbol links unten
-                IconButton(
-                    onClick = {
-                        val intent = Intent(context, GameScheduleActivity::class.java) // Starte die ChatActivity
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.CalendarToday,
-                        contentDescription = "Kalender",
-                        tint = Color(0xFF318DFF)
-                    )
-                }
+                Icon(
+                    Icons.Filled.CalendarToday,
+                    contentDescription = "Kalender",
+                    tint = Color(0xFF318DFF)
+                )
+            }
 
-                // Chat-Symbol rechts unten
-                IconButton(
-                    onClick = {
-                        val intent = Intent(context, ChatActivity::class.java)
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Message,
-                        contentDescription = "Chat",
-                        tint = Color(0xFF318DFF)
-                    )
-                }
+            // Chat-Symbol rechts unten
+            IconButton(
+                onClick = {
+                    val intent = Intent(context, ChatActivity::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Message,
+                    contentDescription = "Chat",
+                    tint = Color(0xFF318DFF)
+                )
             }
         }
     }
 }
-

@@ -44,11 +44,10 @@ class MainViewModel(
     private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
     val userList: LiveData<List<Pair<String, Boolean>>> = _userList
 
-
-
     init {
         loadUserName()
         loadCurrentHost()
+        loadUsers()
     }
 
     fun saveUser(name: String) {
@@ -74,9 +73,9 @@ class MainViewModel(
     }
 
     private fun loadUserName() {
-        val savedUserName = sharedPreferences.getString("user_name", "")
+        val savedUserName = sharedPreferences.getString("user_name", "") ?: "" // Fallback zu leerem String
         _userName.value = savedUserName
-        if (!savedUserName.isNullOrEmpty()) {
+        if (savedUserName.isNotEmpty()) {
             checkUserExists(savedUserName)
         } else {
             _userExists.value = false
@@ -94,8 +93,8 @@ class MainViewModel(
 
     private fun loadCurrentHost() {
         repository.getCurrentHostName { hostName ->
-            _currentHost.value = hostName
-            Log.d("ViewModel", "Aktueller Host geladen: $hostName")
+            _currentHost.value = hostName ?: "" // Fallback zu leerem String, falls hostName null ist
+            Log.d("ViewModel", "Aktueller Host geladen: ${_currentHost.value}")
         }
     }
 
@@ -112,6 +111,7 @@ class MainViewModel(
             if (newHost != null) {
                 repository.updateHostStatus(newHost.first) // Setze den neuen Gastgeber
                 loadCurrentHost() // Lade den aktuellen Gastgeber neu
+                loadUsers() // Benutzerliste neu laden
             }
         }
     }
@@ -136,6 +136,7 @@ class MainViewModel(
                 // Den nächsten Gastgeber auf "Gastgeber" setzen
                 repository.updateHostStatus(nextHost.first) // Übergibt den Namen
                 loadCurrentHost() // Aktuellen Gastgeber neu laden
+                loadUsers() // Benutzerliste neu laden
             }
         }
     }

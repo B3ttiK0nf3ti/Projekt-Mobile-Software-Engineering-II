@@ -25,13 +25,17 @@ import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.components.MainScreen
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
 import androidx.core.content.ContextCompat
+import com.iu.boardgamerapp.ui.HostRotationActivity
+import com.iu.boardgamerapp.ui.MainViewModel
 import java.util.*
 
 class MainActivity : ComponentActivity() {
-    private val calendarEvents = mutableStateListOf<Pair<String, String>>() // Zustand für Kalenderereignisse
-
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(UserRepository(AppDatabaseHelper()), this)
+        // Übergebe den aktuellen Kontext und erstelle die notwendigen Instanzen
+        val databaseHelper = AppDatabaseHelper(this) // Kontext übergeben
+        val userRepository = UserRepository(databaseHelper) // Übergebe den DatabaseHelper
+
+        MainViewModelFactory(userRepository, databaseHelper, this) // Factory mit allen notwendigen Werten erstellen
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,8 +47,6 @@ class MainActivity : ComponentActivity() {
             Log.d("MainActivity", "Benutzerliste aus dem ViewModel: ${users.joinToString()}")
             if (users.isEmpty()) {
                 Toast.makeText(this, "Keine Benutzer zur Auswahl", Toast.LENGTH_SHORT).show()
-            } else {
-                // Logik zum Anzeigen der Benutzer
             }
         }
 
@@ -59,11 +61,23 @@ class MainActivity : ComponentActivity() {
                         MainScreen(
                             viewModel = viewModel,
                             navController = navController,
-                            onShowUserListDialog = { showUserListDialog() },
-                            onRotateHost = { rotateHost() },
                             onNavigateToGameSchedule = {
                                 // Navigiere zu GameScheduleActivity
-                                startActivity(Intent(this@MainActivity, GameScheduleActivity::class.java))
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        GameScheduleActivity::class.java
+                                    )
+                                )
+                            },
+                            onNavigateToHostRotation = {
+                                // Navigiere zur HostRotationActivity
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        HostRotationActivity::class.java
+                                    )
+                                )
                             }
                         )
                     }
@@ -72,37 +86,9 @@ class MainActivity : ComponentActivity() {
 
             }
         }
-    }
-
-    private fun rotateHost() {
-        viewModel.rotateHost() // Aufruf der Methode im ViewModel
-    }
-
-    private fun showUserListDialog() {
-        // Benutzerliste abrufen und in ein Array umwandeln
-        val userList = viewModel.userList.value?.map { it.first }?.toTypedArray() ?: arrayOf()
-        Log.d("UserList", "Benutzerliste: ${userList.joinToString()}")
-
-        // Überprüfen, ob die Benutzerliste leer ist
-        if (userList.isEmpty()) {
-            Toast.makeText(this, "Keine Benutzer zur Auswahl", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val dialog = AlertDialog.Builder(this)
-        dialog.setTitle("Wähle einen neuen Gastgeber")
-
-        dialog.setItems(userList) { _, which ->
-            val selectedUser = viewModel.userList.value?.get(which)
-            selectedUser?.let {
-                viewModel.changeHost(it.first) // Ändere den Gastgeber mit dem Benutzernamen
-            }
-        }
-
-        dialog.setNegativeButton("Abbrechen", null)
-        dialog.show()
-    }
-
 
     }
+
+
+}
 

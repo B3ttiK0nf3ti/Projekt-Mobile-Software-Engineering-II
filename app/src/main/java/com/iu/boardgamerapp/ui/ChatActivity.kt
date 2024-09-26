@@ -36,7 +36,7 @@ class ChatActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         firestore = FirebaseFirestore.getInstance()
-        dbHelper = AppDatabaseHelper()
+        dbHelper = AppDatabaseHelper(this)
 
         dbHelper.getUser { userName ->
             val name = userName ?: "Unknown"

@@ -46,7 +46,7 @@ class GameScheduleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Instanziiere den AppDatabaseHelper
-        appDatabaseHelper = AppDatabaseHelper()
+        appDatabaseHelper = AppDatabaseHelper(this)
 
         // Registrierung des ActivityResultLaunchers für die Kalenderberechtigung
         requestPermissionLauncher = registerForActivityResult(

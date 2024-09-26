@@ -9,12 +9,13 @@ import com.iu.boardgamerapp.ui.MainViewModel
 
 class MainViewModelFactory(
     private val userRepository: UserRepository,
+    private val databaseHelper: AppDatabaseHelper,
     private val context: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(userRepository, AppDatabaseHelper(), context) as T
+            return MainViewModel(userRepository, databaseHelper, context) as T // Verwende databaseHelper, nicht einen neuen
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

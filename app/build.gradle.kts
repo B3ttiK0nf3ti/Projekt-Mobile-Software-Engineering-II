@@ -73,6 +73,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.foundation.android)  // oder die neueste Version
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation(libs.androidx.appcompat)
+    implementation("androidx.appcompat:appcompat:1.6.1") // Aktuelle Version verwenden
+    implementation("androidx.compose.ui:ui:1.4.0") // Beispiel für Compose
+    implementation("androidx.activity:activity-compose:1.7.0") // Beispiel für Activity Compose
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

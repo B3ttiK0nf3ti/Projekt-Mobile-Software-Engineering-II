@@ -1,12 +1,13 @@
 package com.iu.boardgamerapp.data
 
+import android.content.Context
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 
-class AppDatabaseHelper {
+class AppDatabaseHelper(context: Context) {
 
     private val db: FirebaseFirestore = Firebase.firestore
 
