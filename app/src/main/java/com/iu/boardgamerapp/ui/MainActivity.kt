@@ -1,6 +1,6 @@
 package com.iu.boardgamerapp.ui
 
-import GameScheduleActivity
+import com.iu.boardgamerapp.ui.GameScheduleActivity
 import android.Manifest
 import android.app.AlertDialog
 import android.content.ContentResolver

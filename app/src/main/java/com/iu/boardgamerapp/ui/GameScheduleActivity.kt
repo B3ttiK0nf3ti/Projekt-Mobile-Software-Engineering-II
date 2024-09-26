@@ -1,3 +1,5 @@
+package com.iu.boardgamerapp.ui;
+
 import android.Manifest
 import android.content.ContentResolver
 import android.content.Intent

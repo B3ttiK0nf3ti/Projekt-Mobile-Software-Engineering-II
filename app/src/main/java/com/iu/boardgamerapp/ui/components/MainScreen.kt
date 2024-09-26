@@ -1,6 +1,7 @@
 package com.iu.boardgamerapp.ui.components
 
 import BoxWithBorder
+import com.iu.boardgamerapp.ui.GameScheduleActivity
 import GameSelectionDialog
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
@@ -138,7 +139,8 @@ fun MainScreen(
                 // Kalender-Symbol links unten
                 IconButton(
                     onClick = {
-                        navController.navigate("game_schedule")
+                        val intent = Intent(context, GameScheduleActivity::class.java) // Starte die ChatActivity
+                        context.startActivity(intent)
                     },
                     modifier = Modifier
                         .align(Alignment.BottomStart)
