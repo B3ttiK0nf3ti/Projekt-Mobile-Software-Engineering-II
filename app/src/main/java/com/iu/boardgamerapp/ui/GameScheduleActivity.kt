@@ -144,7 +144,7 @@ class GameScheduleActivity : ComponentActivity() {
                     ) {
                         items(calendarEvents.size) { index ->
                             val event = calendarEvents[index]
-                            ScheduleItem(date = formatDate(event.startTime), location = event.location)
+                            ScheduleItem(event = event) // Zeige jedes Ereignis an
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -239,9 +239,8 @@ class GameScheduleActivity : ComponentActivity() {
             CalendarContract.Events.EVENT_LOCATION // Standort hinzufügen, falls benötigt
         )
 
-        val selection =
-            "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
-        val selectionArgs = arrayOf(startMillis.toString(), "%Brettspielabend%")
+        val selection = "${CalendarContract.Events.DTSTART} >= ?"
+        val selectionArgs = arrayOf(startMillis.toString())
 
         val cursor = contentResolver.query(
             uri,
@@ -252,29 +251,25 @@ class GameScheduleActivity : ComponentActivity() {
         )
 
         if (cursor != null) { // Überprüfen, ob der Cursor nicht null ist
-            val idIndex = cursor.getColumnIndex(CalendarContract.Events._ID)
-            val titleIndex = cursor.getColumnIndex(CalendarContract.Events.TITLE)
-            val startIndex = cursor.getColumnIndex(CalendarContract.Events.DTSTART)
-            val endIndex = cursor.getColumnIndex(CalendarContract.Events.DTEND) // Endzeit-Index hinzufügen
-
-            // Kalenderereignisse in der Liste speichern
-            calendarEvents.clear()
+            calendarEvents.clear() // Liste leeren
 
             while (cursor.moveToNext()) {
-                val title = cursor.getString(titleIndex)
-                val start = cursor.getLong(startIndex)
-                val end = cursor.getLong(endIndex) // Endzeit abrufen
+                val title = cursor.getString(cursor.getColumnIndex(CalendarContract.Events.TITLE)) ?: "Kein Titel"
+                val start = cursor.getLong(cursor.getColumnIndex(CalendarContract.Events.DTSTART))
+                val end = cursor.getLong(cursor.getColumnIndex(CalendarContract.Events.DTEND))
+                val location = cursor.getString(cursor.getColumnIndex(CalendarContract.Events.EVENT_LOCATION)) ?: ""
 
                 // Ereignis als CalendarEvent hinzufügen
+                if (title.contains("spielabend", ignoreCase = true)){
                 calendarEvents.add(
                     CalendarEvent(
                         title = title,
                         startTime = start,
-                        endTime = end, // Endzeit verwenden
-                        location = cursor.getString(cursor.getColumnIndex(CalendarContract.Events.EVENT_LOCATION)) ?: "" // Standort optional
+                        endTime = end,
+                        location = location // Standort optional
                     )
                 )
-            }
+            }}
             cursor.close() // Cursor schließen
         } else {
             Log.d("GameScheduleActivity", "Cursor ist null, keine Kalenderereignisse gefunden.")
@@ -286,7 +281,7 @@ class GameScheduleActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ScheduleItem(date: String, location: String) {
+    fun ScheduleItem(event: CalendarEvent) {
         Column(
             modifier = Modifier
                 .background(Color.White, shape = RoundedCornerShape(8.dp))
@@ -294,14 +289,19 @@ class GameScheduleActivity : ComponentActivity() {
                 .fillMaxWidth()
         ) {
             Text(
-                text = "Datum: $date",
+                text = "Titel: ${event.title}",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = Color(0xFF318DFF) // Blau für Titel
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Ort: $location",
+                text = "Datum: ${formatDate(event.startTime)}",
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+            Text(
+                text = "Ort: ${event.location}",
                 fontSize = 14.sp,
                 color = Color.Black
             )
