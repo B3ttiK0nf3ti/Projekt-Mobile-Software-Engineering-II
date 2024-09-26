@@ -47,6 +47,11 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
+    fun getUserByName(userName: String, callback: (Pair<String, Boolean>?) -> Unit) {
+        // Implementiere die Logik, um den Benutzer aus der Datenbank abzurufen
+        // und rufe den Callback mit dem Ergebnis auf.
+    }
+
     // Funktion, die eine LiveData-Liste von Benutzern zurückgibt
     fun getUserList(): LiveData<List<Pair<String, Boolean>>> {
         val userList = MutableLiveData<List<Pair<String, Boolean>>>()

@@ -113,15 +113,19 @@ class MainViewModel(
     }
 
     fun changeHost(newHostName: String) {
-        _userList.value?.let { users ->
-            val newHost = users.find { it.first == newHostName }
-            if (newHost != null) {
-                userRepository.updateHostStatus(newHost.first) // Setze den neuen Gastgeber
+        // Suche nach dem neuen Gastgeber in der Benutzerdatenbank
+        userRepository.getUserByName(newHostName) { user ->
+            user?.let { (name, isHost) ->
+                // Setze den neuen Gastgeber in der Datenbank
+                userRepository.updateHostStatus(name) // Aktualisiere den Status des neuen Gastgebers
                 loadCurrentHost() // Lade den aktuellen Gastgeber neu
                 loadUsers() // Benutzerliste neu laden
+            } ?: run {
+                Log.w("ViewModel", "Neuer Gastgeber nicht gefunden: $newHostName")
             }
         }
     }
+    
 
     fun voteForGame(game: String) {
         val updatedVotes = _votes.value?.toMutableMap() ?: mutableMapOf()
