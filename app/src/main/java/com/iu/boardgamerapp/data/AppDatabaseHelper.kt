@@ -79,35 +79,4 @@ class AppDatabaseHelper(context: Context) {
             }
     }
 
-    // Ereignisse in Firestore speichern
-    fun addCalendarEvent(event: CalendarEvent, callback: (Boolean) -> Unit) {
-        val documentRef = db.collection(CALENDAR_EVENTS_COLLECTION).document() // Korrekte Sammlung verwenden
-        val eventWithId = event.copy(id = documentRef.id)
-
-        documentRef.set(eventWithId)
-            .addOnSuccessListener {
-                Log.d(TAG, "Kalenderereignis erfolgreich hinzugefügt")
-                callback(true)
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Fehler beim Hinzufügen des Kalenderereignisses", e)
-                callback(false)
-            }
-    }
-
-    // Kalenderereignisse abrufen
-    fun fetchCalendarEvents(callback: (List<CalendarEvent>) -> Unit) {
-        db.collection(CALENDAR_EVENTS_COLLECTION) // Korrekte Sammlung verwenden
-            .get()
-            .addOnSuccessListener { result ->
-                val events = result.mapNotNull { document ->
-                    document.toObject(CalendarEvent::class.java)?.copy(id = document.id) // ID zuweisen
-                }
-                callback(events)
-            }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Fehler beim Abrufen der Kalenderereignisse", exception)
-                callback(emptyList())
-            }
-    }
 }
