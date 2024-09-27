@@ -80,41 +80,34 @@ class AppDatabaseHelper(context: Context) {
     }
 
     // Ereignisse in Firestore speichern
-    fun addCalendarEvent(event: CalendarEvent, onComplete: (Boolean) -> Unit) {
-        db.collection("events")
-            .add(event)
+    fun addCalendarEvent(event: CalendarEvent, callback: (Boolean) -> Unit) {
+        val documentRef = db.collection(CALENDAR_EVENTS_COLLECTION).document() // Korrekte Sammlung verwenden
+        val eventWithId = event.copy(id = documentRef.id)
+
+        documentRef.set(eventWithId)
             .addOnSuccessListener {
-                onComplete(true)
+                Log.d(TAG, "Kalenderereignis erfolgreich hinzugefügt")
+                callback(true)
             }
             .addOnFailureListener { e ->
-                Log.e("AppDatabaseHelper", "Error adding document", e)
-                onComplete(false)
+                Log.w(TAG, "Fehler beim Hinzufügen des Kalenderereignisses", e)
+                callback(false)
             }
     }
-    // Kalenderereignisse abrufen
-    fun fetchCalendarEvents(onEventsFetched: (List<CalendarEvent>) -> Unit) {
-        db.collection("events")
-            .get()
-            .addOnSuccessListener { documents ->
-                val events = mutableListOf<CalendarEvent>()
-                for (document in documents) {
-                    val title = document.getString("title") ?: ""
-                    val startTime = document.getLong("start_time") ?: 0L
-                    val endTime = document.getLong("end_time") ?: 0L
-                    val location = document.getString("location") ?: "" // Default auf leeren String
 
-                    // Überprüfen, ob die Variablen gültig sind
-                    if (title.isNotEmpty() && startTime > 0 && endTime > 0) {
-                        events.add(CalendarEvent(document.id, title, startTime, endTime, location))
-                    } else {
-                        Log.w("AppDatabaseHelper", "Invalid data for document: ${document.id}. Title: '$title', Start Time: $startTime, End Time: $endTime, Location: '$location'")
-                    }
+    // Kalenderereignisse abrufen
+    fun fetchCalendarEvents(callback: (List<CalendarEvent>) -> Unit) {
+        db.collection(CALENDAR_EVENTS_COLLECTION) // Korrekte Sammlung verwenden
+            .get()
+            .addOnSuccessListener { result ->
+                val events = result.mapNotNull { document ->
+                    document.toObject(CalendarEvent::class.java)?.copy(id = document.id) // ID zuweisen
                 }
-                onEventsFetched(events)
+                callback(events)
             }
             .addOnFailureListener { exception ->
-                Log.e("AppDatabaseHelper", "Error getting documents: ", exception)
-                onEventsFetched(emptyList())
+                Log.w(TAG, "Fehler beim Abrufen der Kalenderereignisse", exception)
+                callback(emptyList())
             }
     }
 }
