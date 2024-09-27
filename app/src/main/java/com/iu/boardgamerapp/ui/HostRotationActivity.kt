@@ -102,17 +102,6 @@ class HostRotationActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Button zum Wechseln des Gastgebers
-                Button(
-                    onClick = { viewModel.navigateToHostRotation() }, // Placeholder für Navigationslogik
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
-                    modifier = Modifier.fillMaxWidth().padding(8.dp)
-                ) {
-                    Text(text = "Gastgeber ändern", color = Color.White)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Benutzerliste in einer LazyColumn anzeigen
                 LazyColumn(
                     modifier = Modifier

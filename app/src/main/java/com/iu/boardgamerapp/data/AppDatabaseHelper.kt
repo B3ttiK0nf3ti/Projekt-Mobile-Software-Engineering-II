@@ -63,13 +63,19 @@ class AppDatabaseHelper(context: Context) {
 
     // Überprüfen, ob Benutzer existiert
     fun checkUserExists(name: String, onComplete: (Boolean) -> Unit) {
-        db.collection(USERS_COLLECTION).whereEqualTo("name", name).get()
+        val trimmedName = name.trim() // Hier trimmen wir den Namen
+        Log.d(TAG, "Überprüfe, ob Benutzer existiert: $trimmedName") // Log-Ausgabe für Debugging
+
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("name", trimmedName) // Abfrage für den getrimmten Namen
+            .get()
             .addOnSuccessListener { result ->
-                onComplete(!result.isEmpty)
+                Log.d(TAG, "Abfrage erfolgreich: ${result.size()} Dokument(e) gefunden.")
+                onComplete(!result.isEmpty) // Callback mit dem Ergebnis der Abfrage
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "Error checking user existence", e)
-                onComplete(false)
+                Log.w(TAG, "Fehler beim Überprüfen der Benutzerexistenz", e)
+                onComplete(false) // Callback mit false im Fehlerfall
             }
     }
 

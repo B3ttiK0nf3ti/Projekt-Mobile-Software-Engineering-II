@@ -15,8 +15,7 @@ import com.google.firebase.firestore.ktx.firestore
 
 
 class UserRepository(private val databaseHelper: AppDatabaseHelper) {
-
-    private val db: FirebaseFirestore = Firebase.firestore // Firestore mit KTX Erweiterung
+    private val db: FirebaseFirestore = Firebase.firestore
 
     companion object {
         private const val TAG = "UserRepository"
@@ -24,20 +23,29 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
     }
 
     // Benutzer hinzufügen
-    fun addUser(name: String) {
-        val userData = hashMapOf(
-            "name" to name,
-            "isHost" to false // Standardmäßig kein Host
-        )
-
-        db.collection(USERS_COLLECTION).add(userData)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "Benutzer hinzugefügt: $name mit ID: ${documentReference.id}")
+    fun addUser(name: String, callback: (Boolean) -> Unit) {
+        databaseHelper.checkUserExists(name) { exists -> // Verwendung von databaseHelper
+            if (exists) {
+                callback(false) // Benutzer existiert bereits
+            } else {
+                val userData = hashMapOf(
+                    "name" to name,
+                    "isHost" to false // Standardmäßig kein Host
+                )
+                db.collection(USERS_COLLECTION).add(userData)
+                    .addOnSuccessListener { documentReference ->
+                        Log.d(TAG, "Benutzer hinzugefügt: $name mit ID: ${documentReference.id}")
+                        callback(true) // Benutzer erfolgreich hinzugefügt
+                    }
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Fehler beim Hinzufügen des Benutzers", e)
+                        callback(false) // Fehler beim Hinzufügen
+                    }
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Fehler beim Hinzufügen des Benutzers", e)
-            }
+        }
     }
+
+
 
     // Benutzer abrufen
     fun getUser(onComplete: (String?) -> Unit) {
@@ -53,7 +61,6 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                 onComplete(null)
             }
     }
-
     fun getUserByName(name: String, callback: (User?) -> Unit) {
         db.collection(USERS_COLLECTION)
             .whereEqualTo("name", name)
@@ -76,6 +83,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
+
     // Alle Benutzer abrufen
     fun getAllUsers(onComplete: (List<Pair<String, Boolean>>) -> Unit) {
         val users = mutableListOf<Pair<String, Boolean>>() // Liste zum Speichern der Benutzer
@@ -96,34 +104,42 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
     }
 
     // Host-Status aktualisieren
-    fun updateHostStatus(newHostName: String, onComplete: () -> Unit) {
+    fun updateHostStatus(newHostName: String, callback: () -> Unit) {
         getAllUsers { users ->
-            val newHost = users.find { it.first == newHostName } // Benutzer anhand des Namens finden
+            // Finde den neuen Gastgeber
+            val newHost = users.find { it.first == newHostName }
 
             if (newHost != null) {
-                val currentHost = users.find { it.second } // Aktuellen Gastgeber finden
+                // Finde den aktuellen Gastgeber
+                val currentHost = users.find { it.second }
 
-                if (currentHost != null) {
-                    // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
-                    val currentHostRef = db.collection(USERS_COLLECTION).document(currentHost.first)
+                // Setze den aktuellen Gastgeber auf "nicht Gastgeber"
+                currentHost?.let {
+                    val currentHostRef = db.collection(USERS_COLLECTION).document(it.first) // Hier it.first ist die ID
                     currentHostRef.update("isHost", false)
                         .addOnFailureListener { e ->
-                            Log.w(TAG, "Fehler beim Aktualisieren des aktuellen Gastgebers", e)
+                            Log.w(TAG, "Fehler beim Deaktivieren des aktuellen Gastgebers", e)
                         }
                 }
 
-                // Den neuen Gastgeber auf "Gastgeber" setzen
-                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.first)
+                // Setze den neuen Gastgeber
+                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.first) // Hier newHost.first ist die ID
                 newHostRef.update("isHost", true)
                     .addOnSuccessListener {
-                        onComplete() // Aufruf des Callbacks nach erfolgreicher Aktualisierung
+                        Log.d(TAG, "Neuer Gastgeber gesetzt: $newHostName")
+                        callback() // Callback aufrufen, wenn die Aktualisierung erfolgreich war
                     }
                     .addOnFailureListener { e ->
                         Log.w(TAG, "Fehler beim Aktualisieren des neuen Gastgebers", e)
                     }
+            } else {
+                Log.w(TAG, "Neuer Gastgeber nicht gefunden: $newHostName")
             }
         }
     }
+
+
+
 
     // Methode, um den aktuellen Gastgeber aus der Firestore-Datenbank zu laden
     fun getCurrentHost(callback: (String?) -> Unit) {
@@ -137,32 +153,17 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             .addOnSuccessListener { querySnapshot ->
                 if (!querySnapshot.isEmpty) {
                     val document = querySnapshot.documents[0]
-                    val hostName = document.getString("name") // Gehe davon aus, dass der Benutzername im Feld "name" gespeichert ist
+                    val hostName =
+                        document.getString("name") // Gehe davon aus, dass der Benutzername im Feld "name" gespeichert ist
                     callback(hostName)
                 } else {
+                    Log.d(TAG, "Kein Gastgeber gefunden")
                     callback(null) // Kein Gastgeber gefunden
                 }
             }
             .addOnFailureListener { exception ->
-                Log.e("UserRepository", "Fehler beim Abrufen des aktuellen Gastgebers", exception)
+                Log.e(TAG, "Fehler beim Abrufen des aktuellen Gastgebers", exception)
                 callback(null) // Fehlerfall, kein Gastgeber zurückgegeben
             }
     }
-
-
-    // Den aktuellen Host abrufen
-    fun getCurrentHostName(callback: (String?) -> Unit) {
-        val dbRef = FirebaseDatabase.getInstance().getReference("hosts") // Beispiel-Pfad
-        dbRef.child("currentHost").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val hostName = snapshot.getValue(String::class.java)
-                callback(hostName)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.w("UserRepository", "loadHost:onCancelled", error.toException())
-                callback(null) // Fehlerfall
-            }
-    })
-}
 }

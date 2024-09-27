@@ -9,6 +9,9 @@ import androidx.lifecycle.ViewModel
 import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.ui.datamodel.User
+import androidx.compose.runtime.mutableStateOf
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.runtime.State
 
 class MainViewModel(
     private val userRepository: UserRepository,
@@ -18,8 +21,8 @@ class MainViewModel(
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
-    private val _userName = MutableLiveData<String>()
-    val userName: LiveData<String> = _userName
+    private val _userName = mutableStateOf("")
+    val userName: State<String> get() = _userName
 
     private val _userExists = MutableLiveData<Boolean>()
     val userExists: LiveData<Boolean> = _userExists
@@ -47,6 +50,9 @@ class MainViewModel(
     private val _currentHost = MutableLiveData<String?>() // Nullable LiveData
     val currentHost: LiveData<String?> get() = _currentHost
 
+    private val _showNameDialog = mutableStateOf(false)
+    val showNameDialog: State<Boolean> get() = _showNameDialog
+
     // Callback für die Navigation
     var onNavigateToHostRotation: (() -> Unit)? = null
 
@@ -60,6 +66,10 @@ class MainViewModel(
     // Methode zum Abrufen des aktuellen Gastgebers
     fun getCurrentHost(): String {
         return _currentHost.value ?: "Kein Gastgeber gesetzt"
+    }
+
+    fun addUser(name: String, callback: (Boolean) -> Unit) {
+        userRepository.addUser(name, callback)
     }
 
     fun saveUser(name: String) {
@@ -87,21 +97,34 @@ class MainViewModel(
     fun loadUserName() {
         val savedUserName = sharedPreferences.getString("user_name", "") ?: "" // Fallback zu leerem String
         _userName.value = savedUserName
+
         if (savedUserName.isNotEmpty()) {
-            checkUserExists(savedUserName)
+            // Überprüfe, ob der Benutzer in der Datenbank existiert
+            checkUserExists(savedUserName) { exists ->
+                if (!exists) {
+                    // Benutzer existiert nicht, zeige das Dialogfenster an
+                    _showNameDialog.value = true // MutableState für den Dialog
+                }
+            }
         } else {
-            _userExists.value = false
+            // Zeige das Dialogfenster an, wenn kein Benutzername gespeichert ist
+            _showNameDialog.value = true
         }
     }
 
-    fun checkUserExists(name: String) {
-        databaseHelper.checkUserExists(name) { exists ->
-            _userExists.value = exists
+    fun checkUserExists(name: String, onComplete: (Boolean) -> Unit) {
+        val trimmedName = name.trim() // Hier trimmen wir den Namen
+        Log.d("MainViewModel", "Überprüfe, ob Benutzer existiert: $trimmedName") // Log-Ausgabe für Debugging
+
+        databaseHelper.checkUserExists(trimmedName) { exists ->
+            Log.d("MainViewModel", "Benutzerexistenz: $exists")
             if (!exists) {
                 clearUserName()
             }
+            onComplete(exists)
         }
     }
+
 
     fun loadCurrentHost() {
         userRepository.getCurrentHost { hostName ->
@@ -109,7 +132,7 @@ class MainViewModel(
                 _currentHost.value = hostName // Setzt den aktuellen Gastgeber in die LiveData-Variable
             } else {
                 Log.w("MainViewModel", "Kein Gastgeber gesetzt")
-                _currentHost.value = null // Setze auf null, wenn kein Gastgeber vorhanden ist
+                _currentHost.value = "Kein Gastgeber gesetzt" // Standardwert
             }
         }
     }
@@ -126,9 +149,12 @@ class MainViewModel(
     }
 
     fun changeHost(newHostName: String) {
+        Log.d("MainViewModel", "Wechsle Gastgeber zu: $newHostName") // Debugging-Log
+
         userRepository.getUserByName(newHostName) { user ->
             if (user != null) {
-                // Setzt den neuen Gastgeber in Firestore
+                Log.d("MainViewModel", "Benutzer gefunden: ${user.name}") // Debugging-Log
+                // Vor dem Aktualisieren überprüfen, ob das Dokument existiert
                 userRepository.updateHostStatus(user.name) {
                     loadCurrentHost() // Aktualisiere den aktuellen Gastgeber
                     loadUsers() // Benutzerliste neu laden

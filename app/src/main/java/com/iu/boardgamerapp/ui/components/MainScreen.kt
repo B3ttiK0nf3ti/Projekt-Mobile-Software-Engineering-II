@@ -4,6 +4,8 @@ import BoxWithBorder
 import com.iu.boardgamerapp.ui.GameScheduleActivity
 import GameSelectionDialog
 import android.content.Intent
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -43,35 +45,48 @@ fun MainScreen(
     onNavigateToGameSchedule: () -> Unit,
     onNavigateToHostRotation: () -> Unit
 ) {
-    val userName by viewModel.userName.observeAsState("")
+    val userName = viewModel.userName.value
     val userExists by viewModel.userExists.observeAsState(false)
     val currentHost by viewModel.currentHost.observeAsState("") // Aktueller Gastgeber
     val rating by viewModel.rating.observeAsState(0)
 
     // Dialog-Zustände
     var showNameDialog by remember { mutableStateOf(userName.isEmpty() && !userExists) }
-    var showHostDialog by remember { mutableStateOf(false) } // Zustand für den Gastgeber-Dialog
 
     val context = LocalContext.current
 
     // Überprüfe, ob der Benutzer existiert
     LaunchedEffect(userName) {
         if (userName.isNotEmpty()) {
-            viewModel.checkUserExists(userName)
+            viewModel.checkUserExists(userName) { exists ->
+                if (exists) {
+                    // Wenn der Benutzer existiert, kannst du hier eine Nachricht oder eine Aktion ausführen
+                    Log.d("MainScreen", "Benutzer existiert: $userName")
+                } else {
+                    // Wenn der Benutzer nicht existiert, zeige das Dialogfenster an
+                    showNameDialog = true // Oder eine Methode zum Anzeigen des Dialogs aufrufen
+                }
+            }
+        } else {
+            // Wenn der Benutzername leer ist, zeige das Dialogfenster an
+            showNameDialog = true
         }
     }
 
-    // Dialog für Benutzernamen
+// Dialog für Benutzernamen
     if (showNameDialog) {
         UserNameInputDialog(
             onNameEntered = { name ->
-                viewModel.saveUser(name)
-                showNameDialog = false
+                val trimmedName = name.trim() // Leerzeichen am Anfang und Ende entfernen
+                if (trimmedName.isNotEmpty()) {
+                    viewModel.saveUser(trimmedName) // Benutzer speichern
+                    viewModel.saveUserNameToPreferences(trimmedName) // Benutzername in Shared Preferences speichern
+                    showNameDialog = false
+                }
             },
             onDismiss = { showNameDialog = false }
         )
     }
-
 
     Column(
         modifier = Modifier
