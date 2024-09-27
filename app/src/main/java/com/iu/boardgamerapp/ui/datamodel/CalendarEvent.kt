@@ -1,14 +1,8 @@
 package com.iu.boardgamerapp.ui.datamodel
 
-import com.google.firebase.firestore.DocumentId
-import com.google.firebase.firestore.PropertyName
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class CalendarEvent(
-    var id: String = "",
-    var title: String = "",
-    var startTime: Long = 0L,
-    var endTime: Long = 0L,
-    var location: String = ""
+    val title: String,         // Titel des Ereignisses
+    val location: String,      // Ort des Ereignisses
+    val startTime: Long,       // Startzeit des Ereignisses
+    val endTime: Long          // Endzeit des Ereignisses
 )

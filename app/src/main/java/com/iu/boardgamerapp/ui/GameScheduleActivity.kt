@@ -27,18 +27,21 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import java.util.*
 
 class GameScheduleActivity : ComponentActivity() {
+
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
             Log.d("GameScheduleActivity", "Calendar permission granted")
-            // Erlaubnis erteilt, Kalenderdaten laden
             fetchCalendarEvents(mutableListOf())
         } else {
             Log.d("GameScheduleActivity", "Calendar permission denied")
@@ -53,10 +56,9 @@ class GameScheduleActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
 
             // Kalenderereignisse als MutableStateList definieren
-            val calendarEvents = remember { mutableStateListOf<Pair<String, String>>() }
+            val calendarEvents = remember { mutableStateListOf<CalendarEvent>() }
 
             LaunchedEffect(Unit) {
-                // Kalenderereignisse beim ersten Rendern abrufen
                 checkAndFetchCalendarEvents(calendarEvents)
             }
 
@@ -69,7 +71,6 @@ class GameScheduleActivity : ComponentActivity() {
                     onRefresh = {
                         isRefreshing = true
                         coroutineScope.launch(Dispatchers.IO) {
-                            // Kalenderereignisse abrufen (im Hintergrund)
                             fetchCalendarEvents(calendarEvents)
                             isRefreshing = false
                         }
@@ -128,8 +129,8 @@ class GameScheduleActivity : ComponentActivity() {
                                 .padding(8.dp)
                         ) {
                             items(calendarEvents.size) { index ->
-                                val (date, location) = calendarEvents[index]
-                                ScheduleItem(date = date, location = location)
+                                val event = calendarEvents[index]
+                                ScheduleItem(event = event)
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
@@ -139,20 +140,23 @@ class GameScheduleActivity : ComponentActivity() {
                         // Button, um ein Ereignis hinzuzufügen
                         Button(
                             onClick = {
-                                val intent = Intent(Intent.ACTION_INSERT).apply {
-                                    data = CalendarContract.Events.CONTENT_URI
-                                    putExtra(CalendarContract.Events.TITLE, "Brettspielabend")
-                                    putExtra(CalendarContract.Events.EVENT_LOCATION, "Bei Alex")
-                                    putExtra(
-                                        CalendarContract.EXTRA_EVENT_BEGIN_TIME,
-                                        System.currentTimeMillis() + 24 * 60 * 60 * 1000
-                                    )
-                                    putExtra(
-                                        CalendarContract.EXTRA_EVENT_END_TIME,
-                                        System.currentTimeMillis() + 26 * 60 * 60 * 1000
-                                    )
+                                val startTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000 // 1 Tag in der Zukunft
+                                val endTime = startTime + 2 * 60 * 60 * 1000 // 2 Stunden später
+                                val newEvent = CalendarEvent(
+                                    title = "Brettspielabend", // Titel des Ereignisses
+                                    location = "Bei Alex",     // Ort des Ereignisses
+                                    startTime = startTime,     // Startzeit des Ereignisses
+                                    endTime = endTime          // Endzeit des Ereignisses
+                                )
+
+                                // Füge das Ereignis zum Kalender hinzu
+                                addEventToCalendar(newEvent)
+
+                                // Speichere das Ereignis in Firestore
+                                saveEventToFirestore(newEvent) { date ->
+                                    // Ereignis zur calendarEvents-Liste hinzufügen
+                                    calendarEvents.add(newEvent) // Hier wird das neue Event direkt hinzugefügt
                                 }
-                                startActivity(intent)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
                             modifier = Modifier.fillMaxWidth().padding(8.dp)
@@ -165,20 +169,44 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndFetchCalendarEvents(calendarEvents: MutableList<Pair<String, String>>) {
+    private fun addEventToCalendar(event: CalendarEvent) {
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, event.title)
+            putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startTime)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.endTime)
+            putExtra(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        }
+        startActivity(intent)
+    }
+
+    private fun saveEventToFirestore(event: CalendarEvent, onSuccess: (String) -> Unit) {
+        Log.d("Firestore", "Saving event: $event") // Debugging-Log
+        firestore.collection("calendarEvents")
+            .add(event)
+            .addOnSuccessListener { documentReference ->
+                Log.d("Firestore", "Event added with ID: ${documentReference.id}")
+                val dateFormatted = java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(event.startTime))
+                onSuccess(dateFormatted) // Geben Sie das formatierte Datum zurück
+            }
+            .addOnFailureListener { e ->
+                Log.w("Firestore", "Error adding event", e)
+            }
+    }
+
+    private fun checkAndFetchCalendarEvents(calendarEvents: MutableList<CalendarEvent>) {
         if (ContextCompat.checkSelfPermission(
                 this, Manifest.permission.READ_CALENDAR
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            // Berechtigung erteilt, Kalenderdaten abrufen
             fetchCalendarEvents(calendarEvents)
         } else {
-            // Berechtigung anfordern
             requestPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
         }
     }
 
-    private fun fetchCalendarEvents(calendarEvents: MutableList<Pair<String, String>>) {
+    private fun fetchCalendarEvents(calendarEvents: MutableList<CalendarEvent>) {
         val contentResolver: ContentResolver = contentResolver
         val uri = CalendarContract.Events.CONTENT_URI
 
@@ -195,11 +223,12 @@ class GameScheduleActivity : ComponentActivity() {
             CalendarContract.Events._ID,
             CalendarContract.Events.TITLE,
             CalendarContract.Events.DTSTART,
-            CalendarContract.Events.DTEND
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.EVENT_LOCATION // Include location in projection
         )
 
         val selection = "${CalendarContract.Events.DTSTART} >= ? AND ${CalendarContract.Events.TITLE} LIKE ?"
-        val selectionArgs = arrayOf(startMillis.toString(), "%Brettspielabend%")
+        val selectionArgs = arrayOf(startMillis.toString(), "%spielabend%")
 
         val cursor = contentResolver.query(
             uri,
@@ -213,27 +242,33 @@ class GameScheduleActivity : ComponentActivity() {
             val idIndex = it.getColumnIndex(CalendarContract.Events._ID)
             val titleIndex = it.getColumnIndex(CalendarContract.Events.TITLE)
             val startIndex = it.getColumnIndex(CalendarContract.Events.DTSTART)
+            val endIndex = it.getColumnIndex(CalendarContract.Events.DTEND)
+            val locationIndex = it.getColumnIndex(CalendarContract.Events.EVENT_LOCATION) // Get index for location
 
-            // Kalenderereignisse in der Liste speichern
+            // Clear existing calendar events
             calendarEvents.clear()
 
             while (it.moveToNext()) {
                 val title = it.getString(titleIndex)
                 val start = it.getLong(startIndex)
+                val end = it.getLong(endIndex)
+                val location = it.getString(locationIndex) ?: "" // Fetch location; use empty string if null
 
-                // Formatierte Datum und Ereignisse hinzufügen
-                calendarEvents.add(
-                    java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(
-                        Date(start)
-                    ) to title
+                // Create a CalendarEvent and add it
+                val event = CalendarEvent(
+                    title = title,
+                    location = location, // Use the fetched location
+                    startTime = start,
+                    endTime = end
                 )
+                calendarEvents.add(event)
             }
         }
     }
 }
 
 @Composable
-fun ScheduleItem(date: String, location: String) {
+fun ScheduleItem(event: CalendarEvent) {
     Column(
         modifier = Modifier
             .background(Color.White, shape = RoundedCornerShape(8.dp))
@@ -241,14 +276,20 @@ fun ScheduleItem(date: String, location: String) {
             .fillMaxWidth()
     ) {
         Text(
-            text = "Datum: $date",
+            text = "Datum: ${java.text.SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(event.startTime))}",
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = Color(0xFF318DFF) // Blau für Titel
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Ort: $location",
+            text = "Titel: ${event.title}",
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Ort: ${event.location}",
             fontSize = 14.sp,
             color = Color.Black
         )
