@@ -42,7 +42,7 @@ class GameScheduleActivity : ComponentActivity() {
     ) { isGranted: Boolean ->
         if (isGranted) {
             Log.d("GameScheduleActivity", "Calendar permission granted")
-            fetchCalendarEvents(mutableListOf())
+            checkAndFetchCalendarEvents(mutableListOf())
         } else {
             Log.d("GameScheduleActivity", "Calendar permission denied")
         }
@@ -104,7 +104,7 @@ class GameScheduleActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Gerätekalender öffnen Button
+                        /// Gerätekalender öffnen Button
                         Button(
                             onClick = {
                                 val intent = Intent(Intent.ACTION_MAIN).apply {
@@ -148,14 +148,11 @@ class GameScheduleActivity : ComponentActivity() {
                                     startTime = startTime,     // Startzeit des Ereignisses
                                     endTime = endTime          // Endzeit des Ereignisses
                                 )
-
-                                // Füge das Ereignis zum Kalender hinzu
+                                // Ereignis zum Kalender hinzufügen
                                 addEventToCalendar(newEvent)
-
-                                // Speichere das Ereignis in Firestore
+                                // Ereignis in Firestore speichern
                                 saveEventToFirestore(newEvent) { date ->
-                                    // Ereignis zur calendarEvents-Liste hinzufügen
-                                    calendarEvents.add(newEvent) // Hier wird das neue Event direkt hinzugefügt
+                                    calendarEvents.add(newEvent) // Hier wird das neue Ereignis direkt hinzugefügt
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
@@ -191,7 +188,7 @@ class GameScheduleActivity : ComponentActivity() {
                 onSuccess(dateFormatted) // Geben Sie das formatierte Datum zurück
             }
             .addOnFailureListener { e ->
-                Log.w("Firestore", "Error adding event", e)
+                Log.w("Firestore", "Error adding event: ${e.message}", e) // Verbessert die Fehlermeldung
             }
     }
 
@@ -263,6 +260,8 @@ class GameScheduleActivity : ComponentActivity() {
                 )
                 calendarEvents.add(event)
             }
+        } ?: run {
+            Log.w("GameScheduleActivity", "Cursor is null, no events fetched.")
         }
     }
 }
