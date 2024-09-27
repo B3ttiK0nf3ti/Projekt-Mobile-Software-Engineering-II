@@ -39,11 +39,13 @@ class MainViewModel(
     private val _showGameSelectionDialog = MutableLiveData<Boolean>(false)
     val showGameSelectionDialog: LiveData<Boolean> = _showGameSelectionDialog
 
-    private val _currentHost = MutableLiveData<String?>()
-    val currentHost: LiveData<String?> get() = _currentHost
+    // LiveData für die Benutzerliste
+    private val _userList = MutableLiveData<List<User>>()
+    val userList: LiveData<List<User>> get() = _userList
 
-    private val _userList = MutableLiveData<List<Pair<String, Boolean>>>()
-    val userList: LiveData<List<Pair<String, Boolean>>> = userRepository.getUserList()
+    // LiveData für den aktuellen Gastgeber
+    private val _currentHost = MutableLiveData<String?>() // Nullable LiveData
+    val currentHost: LiveData<String?> get() = _currentHost
 
     // Callback für die Navigation
     var onNavigateToHostRotation: (() -> Unit)? = null
@@ -51,20 +53,13 @@ class MainViewModel(
     private var currentHostName: String? = null
 
     init {
-        loadUserName()
         loadCurrentHost()
         loadUsers()
     }
 
     // Methode zum Abrufen des aktuellen Gastgebers
     fun getCurrentHost(): String {
-        return currentHostName ?: "Kein Gastgeber gesetzt" // Rückgabe eines Standardwerts, falls kein Gastgeber gesetzt ist
-    }
-
-    fun getUsers(): List<User> {
-        return userList.value?.mapIndexed { index, (name, isHost) ->
-            User(id = index.toString(), name = name, isHost = isHost)
-        } ?: emptyList()
+        return _currentHost.value ?: "Kein Gastgeber gesetzt"
     }
 
     fun saveUser(name: String) {
@@ -109,29 +104,37 @@ class MainViewModel(
     }
 
     fun loadCurrentHost() {
-        userRepository.getCurrentHostName { hostName ->
-            Log.d("MainViewModel", "Aktueller Gastgeber abgerufen: $hostName")
-            _currentHost.value = hostName // Aktualisiere den aktuellen Gastgeber
+        userRepository.getCurrentHost { hostName ->
+            if (hostName != null) {
+                _currentHost.value = hostName // Setzt den aktuellen Gastgeber in die LiveData-Variable
+            } else {
+                Log.w("MainViewModel", "Kein Gastgeber gesetzt")
+                _currentHost.value = null // Setze auf null, wenn kein Gastgeber vorhanden ist
+            }
         }
     }
 
     fun loadUsers() {
-        // Implementiere die Logik zum Laden der Benutzer
         userRepository.getAllUsers { users ->
-            _userList.value = users // Speichern der Benutzerliste in der LiveData-Variable
+            // Mapping der Paar-Liste (Name, isHost) in eine Liste von User-Objekten
+            val userList = users.map { (name, isHost) ->
+                User(id = name, name = name, isHost = isHost)
+            }
+            // Speichern der gemappten Benutzerliste in der LiveData-Variable
+            _userList.value = userList
         }
     }
 
     fun changeHost(newHostName: String) {
-        // Suche nach dem neuen Gastgeber in der Benutzerdatenbank
         userRepository.getUserByName(newHostName) { user ->
-            user?.let {
-                // Setze den neuen Gastgeber in der Datenbank
-                userRepository.updateHostStatus(it.name) // Aktualisiere den Status des neuen Gastgebers
-                loadCurrentHost() // Lade den aktuellen Gastgeber neu
-                loadUsers() // Benutzerliste neu laden
-            } ?: run {
-                Log.w("ViewModel", "Neuer Gastgeber nicht gefunden: $newHostName")
+            if (user != null) {
+                // Setzt den neuen Gastgeber in Firestore
+                userRepository.updateHostStatus(user.name) {
+                    loadCurrentHost() // Aktualisiere den aktuellen Gastgeber
+                    loadUsers() // Benutzerliste neu laden
+                }
+            } else {
+                Log.w("MainViewModel", "Neuer Gastgeber nicht gefunden: $newHostName")
             }
         }
     }
@@ -144,18 +147,17 @@ class MainViewModel(
     }
 
     fun rotateHost() {
-        _userList.value?.let { users ->
-            val currentHostIndex = users.indexOfFirst { it.second } // Assuming second is isHost in Pair
+        val users = _userList.value ?: return
+        val currentHostIndex = users.indexOfFirst { it.isHost }
 
-            if (currentHostIndex != -1) {
-                val nextHostIndex = (currentHostIndex + 1) % users.size
-                val nextHost = users[nextHostIndex]
+        if (currentHostIndex != -1) {
+            // Finde den nächsten Gastgeber (zyklisch)
+            val nextHostIndex = (currentHostIndex + 1) % users.size
+            val nextHost = users[nextHostIndex]
 
-                // Den aktuellen Gastgeber auf "nicht Gastgeber" setzen
-                userRepository.updateHostStatus(users[currentHostIndex].first) // Übergibt den Namen
-                // Den nächsten Gastgeber auf "Gastgeber" setzen
-                userRepository.updateHostStatus(nextHost.first) // Übergibt den Namen
-                loadCurrentHost() // Aktuellen Gastgeber neu laden
+            // Aktualisiere den Gastgeber in der Datenbank
+            userRepository.updateHostStatus(nextHost.name) {
+                loadCurrentHost() // Aktualisiere den aktuellen Gastgeber
                 loadUsers() // Benutzerliste neu laden
             }
         }

@@ -11,10 +11,12 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.iu.boardgamerapp.ui.datamodel.User
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.ktx.firestore
+
 
 class UserRepository(private val databaseHelper: AppDatabaseHelper) {
 
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore = Firebase.firestore // Firestore mit KTX Erweiterung
 
     companion object {
         private const val TAG = "UserRepository"
@@ -74,24 +76,6 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
-    // Funktion, die eine LiveData-Liste von Benutzern zurückgibt
-    fun getUserList(): LiveData<List<Pair<String, Boolean>>> {
-        val userList = MutableLiveData<List<Pair<String, Boolean>>>()
-
-        // Hier kannst du deine Logik einfügen, um die Benutzer zu laden
-        // Zum Beispiel aus einer Datenbank oder einer API.
-        // Dies ist ein Platzhalter für die tatsächliche Implementierung:
-        userList.value = listOf(
-            Pair("Benutzer 1", false),
-            Pair("Benutzer 2", true),
-            Pair("Benutzer 3", false)
-        )
-
-        return userList
-    }
-
-
-
     // Alle Benutzer abrufen
     fun getAllUsers(onComplete: (List<Pair<String, Boolean>>) -> Unit) {
         val users = mutableListOf<Pair<String, Boolean>>() // Liste zum Speichern der Benutzer
@@ -112,7 +96,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
     }
 
     // Host-Status aktualisieren
-    fun updateHostStatus(newHostName: String) {
+    fun updateHostStatus(newHostName: String, onComplete: () -> Unit) {
         getAllUsers { users ->
             val newHost = users.find { it.first == newHostName } // Benutzer anhand des Namens finden
 
@@ -131,12 +115,40 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                 // Den neuen Gastgeber auf "Gastgeber" setzen
                 val newHostRef = db.collection(USERS_COLLECTION).document(newHost.first)
                 newHostRef.update("isHost", true)
+                    .addOnSuccessListener {
+                        onComplete() // Aufruf des Callbacks nach erfolgreicher Aktualisierung
+                    }
                     .addOnFailureListener { e ->
                         Log.w(TAG, "Fehler beim Aktualisieren des neuen Gastgebers", e)
                     }
             }
         }
     }
+
+    // Methode, um den aktuellen Gastgeber aus der Firestore-Datenbank zu laden
+    fun getCurrentHost(callback: (String?) -> Unit) {
+        val hostCollection = db.collection(USERS_COLLECTION)
+
+        // Abfrage, um den Benutzer zu finden, der als Gastgeber markiert ist (z.B. durch das 'isHost'-Flag)
+        hostCollection
+            .whereEqualTo("isHost", true)
+            .limit(1) // Nehme nur einen Gastgeber an
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (!querySnapshot.isEmpty) {
+                    val document = querySnapshot.documents[0]
+                    val hostName = document.getString("name") // Gehe davon aus, dass der Benutzername im Feld "name" gespeichert ist
+                    callback(hostName)
+                } else {
+                    callback(null) // Kein Gastgeber gefunden
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("UserRepository", "Fehler beim Abrufen des aktuellen Gastgebers", exception)
+                callback(null) // Fehlerfall, kein Gastgeber zurückgegeben
+            }
+    }
+
 
     // Den aktuellen Host abrufen
     fun getCurrentHostName(callback: (String?) -> Unit) {

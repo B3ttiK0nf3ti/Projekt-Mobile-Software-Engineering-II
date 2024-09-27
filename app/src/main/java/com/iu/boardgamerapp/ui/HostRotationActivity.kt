@@ -62,9 +62,12 @@ class HostRotationActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
+        // Abrufen der Benutzerliste aus dem ViewModel
         val userList by viewModel.userList.observeAsState(emptyList())
-        val users = viewModel.getUsers() // Umgewandelte Benutzerliste
-        val currentHost = viewModel.getCurrentHost()
+
+        // Abrufen des aktuellen Gastgebers aus dem ViewModel
+        val currentHost by viewModel.currentHost.observeAsState("Lade Gastgeber...") // Standardtext bei Ladezustand
+
 
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -91,7 +94,7 @@ class HostRotationActivity : ComponentActivity() {
 
                 // Aktuellen Gastgeber anzeigen
                 Text(
-                    text = "Aktueller Gastgeber: $currentHost",
+                    text = "Aktueller Gastgeber: $currentHost", // Zeigt den aktuellen Gastgeber an
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = Color.Black
@@ -101,7 +104,7 @@ class HostRotationActivity : ComponentActivity() {
 
                 // Button zum Wechseln des Gastgebers
                 Button(
-                    onClick = { viewModel.navigateToHostRotation() }, // Die entsprechende Methode aufrufen
+                    onClick = { viewModel.navigateToHostRotation() }, // Placeholder für Navigationslogik
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
                     modifier = Modifier.fillMaxWidth().padding(8.dp)
                 ) {
@@ -117,8 +120,8 @@ class HostRotationActivity : ComponentActivity() {
                         .fillMaxWidth()
                         .padding(8.dp)
                 ) {
-                    items(users.size) { index ->
-                        val user = users[index]
+                    items(userList.size) { index ->
+                        val user = userList[index]
                         UserItem(user) { selectedUser ->
                             // Gastgeber wechseln und zur Startseite zurückkehren
                             viewModel.changeHost(selectedUser.name) // Funktion zum Wechseln des Gastgebers
