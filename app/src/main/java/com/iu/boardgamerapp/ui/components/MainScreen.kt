@@ -47,8 +47,9 @@ fun MainScreen(
 ) {
     val userName = viewModel.userName.value
     val userExists by viewModel.userExists.observeAsState(false)
-    val currentHost by viewModel.currentHost.observeAsState("") // Aktueller Gastgeber
+    val currentHost by viewModel.currentHost.observeAsState("Niemand")
     val rating by viewModel.rating.observeAsState(0)
+    val userList by viewModel.userList.observeAsState(emptyList())
 
     // Dialog-Zustände
     var showNameDialog by remember { mutableStateOf(userName.isEmpty() && !userExists) }

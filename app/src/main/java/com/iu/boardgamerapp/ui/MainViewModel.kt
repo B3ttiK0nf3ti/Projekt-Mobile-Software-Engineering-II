@@ -47,8 +47,8 @@ class MainViewModel(
     val userList: LiveData<List<User>> get() = _userList
 
     // LiveData für den aktuellen Gastgeber
-    private val _currentHost = MutableLiveData<String?>() // Nullable LiveData
-    val currentHost: LiveData<String?> get() = _currentHost
+    private val _currentHost = MutableLiveData<String>()
+    val currentHost: LiveData<String> get() = _currentHost
 
     private val _showNameDialog = mutableStateOf(false)
     val showNameDialog: State<Boolean> get() = _showNameDialog
@@ -59,13 +59,8 @@ class MainViewModel(
     private var currentHostName: String? = null
 
     init {
-        loadCurrentHost()
         loadUsers()
-    }
-
-    // Methode zum Abrufen des aktuellen Gastgebers
-    fun getCurrentHost(): String {
-        return _currentHost.value ?: "Kein Gastgeber gesetzt"
+        loadCurrentHost()
     }
 
     fun addUser(name: String, callback: (Boolean) -> Unit) {
@@ -125,39 +120,38 @@ class MainViewModel(
         }
     }
 
-
     fun loadCurrentHost() {
         userRepository.getCurrentHost { hostName ->
-            if (hostName != null) {
-                _currentHost.value = hostName // Setzt den aktuellen Gastgeber in die LiveData-Variable
-            } else {
-                Log.w("MainViewModel", "Kein Gastgeber gesetzt")
-                _currentHost.value = "Kein Gastgeber gesetzt" // Standardwert
-            }
+            _currentHost.value = hostName ?: "Niemand" // Setze den aktuellen Host
+        }
+    }
+
+    fun updateHost(newHostName: String) {
+        userRepository.updateHostStatus(newHostName) {
+            // Nach dem Aktualisieren den aktuellen Gastgeber erneut laden
+            loadCurrentHost()
         }
     }
 
     fun loadUsers() {
         userRepository.getAllUsers { users ->
-            // Mapping der Paar-Liste (Name, isHost) in eine Liste von User-Objekten
-            val userList = users.map { (name, isHost) ->
-                User(id = name, name = name, isHost = isHost)
-            }
-            // Speichern der gemappten Benutzerliste in der LiveData-Variable
-            _userList.value = userList
+            _userList.value = users // Speichern der Benutzerliste in der LiveData-Variable
         }
     }
 
-    fun changeHost(newHostName: String) {
-        Log.d("MainViewModel", "Wechsle Gastgeber zu: $newHostName") // Debugging-Log
+
+    fun changeHost(newHostName: String, onSuccess: () -> Unit) {
+        Log.d("MainViewModel", "Wechsle Gastgeber zu: $newHostName")
 
         userRepository.getUserByName(newHostName) { user ->
             if (user != null) {
-                Log.d("MainViewModel", "Benutzer gefunden: ${user.name}") // Debugging-Log
-                // Vor dem Aktualisieren überprüfen, ob das Dokument existiert
+                Log.d("MainViewModel", "Benutzer gefunden: ${user.name}")
                 userRepository.updateHostStatus(user.name) {
-                    loadCurrentHost() // Aktualisiere den aktuellen Gastgeber
-                    loadUsers() // Benutzerliste neu laden
+                    loadCurrentHost() // Dies sollte currentHost aktualisieren
+                    loadUsers() // Neu laden der Benutzer
+
+                    // Callback aufrufen, um den Hostwechsel zu bestätigen
+                    onSuccess()
                 }
             } else {
                 Log.w("MainViewModel", "Neuer Gastgeber nicht gefunden: $newHostName")

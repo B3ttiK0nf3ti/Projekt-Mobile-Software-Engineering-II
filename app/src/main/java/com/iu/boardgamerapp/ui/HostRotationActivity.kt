@@ -1,5 +1,6 @@
 package com.iu.boardgamerapp.ui
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -113,8 +114,11 @@ class HostRotationActivity : ComponentActivity() {
                         val user = userList[index]
                         UserItem(user) { selectedUser ->
                             // Gastgeber wechseln und zur Startseite zurückkehren
-                            viewModel.changeHost(selectedUser.name) // Funktion zum Wechseln des Gastgebers
-                            finish()  // Schließt die Activity
+                            viewModel.changeHost(selectedUser.name) {
+                                // Callback, um den Hostwechsel zu bestätigen
+                                setResult(Activity.RESULT_OK) // Setze das Ergebnis
+                                finish()  // Schließt die Activity
+                            }
                         }
                         Spacer(modifier = Modifier.height(16.dp)) // Fügt Platz zwischen den Benutzer-Items hinzu
                     }

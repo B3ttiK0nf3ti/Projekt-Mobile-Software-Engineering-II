@@ -34,12 +34,22 @@ class MainActivity : ComponentActivity() {
         // Übergebe den aktuellen Kontext und erstelle die notwendigen Instanzen
         val databaseHelper = AppDatabaseHelper(this) // Kontext übergeben
         val userRepository = UserRepository(databaseHelper) // Übergebe den DatabaseHelper
-
         MainViewModelFactory(userRepository, databaseHelper, this) // Factory mit allen notwendigen Werten erstellen
     }
 
+    private lateinit var hostRotationActivityResultLauncher: ActivityResultLauncher<Intent>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialisiere den ActivityResultLauncher für die HostRotationActivity
+        hostRotationActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                // Wenn der Gastgeber erfolgreich gewechselt wurde, lade die aktuellen Daten neu
+                viewModel.loadCurrentHost() // Lade den aktuellen Gastgeber
+                Toast.makeText(this, "Gastgeber erfolgreich gewechselt!", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Observer für die Benutzerliste
         viewModel.loadUsers() // Lade die Benutzerliste
@@ -71,8 +81,8 @@ class MainActivity : ComponentActivity() {
                                 )
                             },
                             onNavigateToHostRotation = {
-                                // Navigiere zur HostRotationActivity
-                                startActivity(
+                                // Navigiere zur HostRotationActivity und verwende den ActivityResultLauncher
+                                hostRotationActivityResultLauncher.launch(
                                     Intent(
                                         this@MainActivity,
                                         HostRotationActivity::class.java

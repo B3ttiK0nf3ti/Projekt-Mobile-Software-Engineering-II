@@ -45,8 +45,6 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
         }
     }
 
-
-
     // Benutzer abrufen
     fun getUser(onComplete: (String?) -> Unit) {
         db.collection(USERS_COLLECTION).limit(1).get()
@@ -61,6 +59,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                 onComplete(null)
             }
     }
+
     fun getUserByName(name: String, callback: (User?) -> Unit) {
         db.collection(USERS_COLLECTION)
             .whereEqualTo("name", name)
@@ -69,7 +68,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             .addOnSuccessListener { result ->
                 if (!result.isEmpty) {
                     val document = result.documents[0]
-                    val userId = document.id // ID des Dokuments in der Datenbank
+                    val userId = document.id.toIntOrNull() ?: 0 // Konvertiere die ID in einen Integer
                     val userName = document.getString("name") ?: ""
                     val isHost = document.getBoolean("isHost") ?: false
                     callback(User(userId, userName, isHost)) // Benutzer mit ID zurückgeben
@@ -83,54 +82,66 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
-
     // Alle Benutzer abrufen
-    fun getAllUsers(onComplete: (List<Pair<String, Boolean>>) -> Unit) {
-        val users = mutableListOf<Pair<String, Boolean>>() // Liste zum Speichern der Benutzer
+    fun getAllUsers(callback: (List<User>) -> Unit) {
         db.collection(USERS_COLLECTION).get()
             .addOnSuccessListener { result ->
-                for (document in result) {
-                    val name = document.getString("name") ?: ""
+                val users = result.map { document ->
+                    val userId = document.id.toIntOrNull() ?: 0 // Konvertiere die ID in einen Integer
+                    val userName = document.getString("name") ?: ""
                     val isHost = document.getBoolean("isHost") ?: false
-                    users.add(name to isHost)
+                    User(userId, userName, isHost) // Benutzer-Objekt erstellen
                 }
-                Log.d(TAG, "Benutzer aus der Datenbank: ${users.joinToString()}")
-                onComplete(users)
+                callback(users)
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "Fehler beim Abrufen aller Benutzer", e)
-                onComplete(emptyList())
+                Log.w(TAG, "Fehler beim Abrufen der Benutzer", e)
+                callback(emptyList())
             }
     }
 
     // Host-Status aktualisieren
     fun updateHostStatus(newHostName: String, callback: () -> Unit) {
+        Log.d(TAG, "Wechsle Gastgeber zu: $newHostName") // Debugging-Log
+
         getAllUsers { users ->
             // Finde den neuen Gastgeber
-            val newHost = users.find { it.first == newHostName }
+            val newHost = users.find { it.name == newHostName }
 
             if (newHost != null) {
                 // Finde den aktuellen Gastgeber
-                val currentHost = users.find { it.second }
+                val currentHost = users.find { it.isHost }
 
-                // Setze den aktuellen Gastgeber auf "nicht Gastgeber"
-                currentHost?.let {
-                    val currentHostRef = db.collection(USERS_COLLECTION).document(it.first) // Hier it.first ist die ID
+                // Deaktiviere den aktuellen Gastgeber
+                currentHost?.let { host ->
+                    val currentHostRef =
+                        db.collection(USERS_COLLECTION).document(host.id.toString())
                     currentHostRef.update("isHost", false)
-                        .addOnFailureListener { e ->
-                            Log.w(TAG, "Fehler beim Deaktivieren des aktuellen Gastgebers", e)
+                        .addOnSuccessListener {
+                            Log.d(
+                                TAG,
+                                "Aktueller Gastgeber ${host.name} wurde erfolgreich deaktiviert."
+                            )
                         }
+                        .addOnFailureListener { e ->
+                            Log.w(
+                                TAG,
+                                "Fehler beim Deaktivieren des aktuellen Gastgebers: ${e.message}"
+                            )
+                        }
+                } ?: run {
+                    Log.d(TAG, "Kein aktueller Gastgeber gefunden, keine Änderung notwendig.")
                 }
 
-                // Setze den neuen Gastgeber
-                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.first) // Hier newHost.first ist die ID
+                // Aktiviere den neuen Gastgeber
+                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.id.toString())
                 newHostRef.update("isHost", true)
                     .addOnSuccessListener {
-                        Log.d(TAG, "Neuer Gastgeber gesetzt: $newHostName")
-                        callback() // Callback aufrufen, wenn die Aktualisierung erfolgreich war
+                        Log.d(TAG, "Neuer Gastgeber gesetzt: ${newHost.name}")
+                        callback() // Callback nach erfolgreichem Update aufrufen
                     }
                     .addOnFailureListener { e ->
-                        Log.w(TAG, "Fehler beim Aktualisieren des neuen Gastgebers", e)
+                        Log.w(TAG, "Fehler beim Aktualisieren des neuen Gastgebers: ${e.message}")
                     }
             } else {
                 Log.w(TAG, "Neuer Gastgeber nicht gefunden: $newHostName")
@@ -138,32 +149,27 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
         }
     }
 
-
-
-
     // Methode, um den aktuellen Gastgeber aus der Firestore-Datenbank zu laden
     fun getCurrentHost(callback: (String?) -> Unit) {
         val hostCollection = db.collection(USERS_COLLECTION)
-
-        // Abfrage, um den Benutzer zu finden, der als Gastgeber markiert ist (z.B. durch das 'isHost'-Flag)
         hostCollection
             .whereEqualTo("isHost", true)
-            .limit(1) // Nehme nur einen Gastgeber an
+            .limit(1)
             .get()
             .addOnSuccessListener { querySnapshot ->
                 if (!querySnapshot.isEmpty) {
                     val document = querySnapshot.documents[0]
-                    val hostName =
-                        document.getString("name") // Gehe davon aus, dass der Benutzername im Feld "name" gespeichert ist
+                    val hostName = document.getString("name")
                     callback(hostName)
                 } else {
                     Log.d(TAG, "Kein Gastgeber gefunden")
-                    callback(null) // Kein Gastgeber gefunden
+                    callback(null)
                 }
             }
             .addOnFailureListener { exception ->
                 Log.e(TAG, "Fehler beim Abrufen des aktuellen Gastgebers", exception)
-                callback(null) // Fehlerfall, kein Gastgeber zurückgegeben
+                callback(null)
             }
     }
+
 }
