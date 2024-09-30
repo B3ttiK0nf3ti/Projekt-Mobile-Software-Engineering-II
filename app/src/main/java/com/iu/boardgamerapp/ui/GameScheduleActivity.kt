@@ -2,11 +2,13 @@ package com.iu.boardgamerapp.ui
 
 import android.Manifest
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,17 +35,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.google.firebase.Timestamp
+import com.iu.boardgamerapp.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import androidx.compose.ui.platform.LocalContext
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import java.util.*
 
 class GameScheduleActivity : ComponentActivity() {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val calendarEvents = mutableStateListOf<CalendarEvent>()
-    private var nextEventId by mutableStateOf(1)
-
-    // Register for permission requests
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -54,18 +58,27 @@ class GameScheduleActivity : ComponentActivity() {
             fetchCalendarEvents(calendarEvents)
         } else {
             Log.d("GameScheduleActivity", "Kalenderberechtigungen abgelehnt")
+            Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkAndRequestPermissions()
+
         setContent {
             var isRefreshing by remember { mutableStateOf(false) }
             val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
             val coroutineScope = rememberCoroutineScope()
+            var selectedDateStart by remember { mutableStateOf(Calendar.getInstance()) }
+            var selectedDateEnd by remember { mutableStateOf(Calendar.getInstance().apply { add(Calendar.HOUR, 2) }) }
+
+            var isLoading by remember { mutableStateOf(true) }
 
             LaunchedEffect(Unit) {
-                checkAndRequestPermissions()
+                isLoading = true
+                fetchCalendarEvents(calendarEvents)
+                isLoading = false
             }
 
             Surface(
@@ -94,35 +107,17 @@ class GameScheduleActivity : ComponentActivity() {
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Zurück",
+                                contentDescription = stringResource(R.string.back),
                                 tint = Color.Gray
                             )
                         }
 
                         Text(
-                            text = "Spielplan",
+                            text = stringResource(R.string.schedule_title),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF318DFF)
                         )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Button(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_MAIN).apply {
-                                    addCategory(Intent.CATEGORY_APP_CALENDAR)
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                startActivity(intent)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                        ) {
-                            Text(text = "Gerätekalender öffnen", color = Color.White)
-                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -144,32 +139,52 @@ class GameScheduleActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        // Dynamische Eingabefelder für Titel und Ort
+                        var title by remember { mutableStateOf("") }
+                        var location by remember { mutableStateOf("") }
+
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { title = it },
+                            label = { Text(stringResource(R.string.event_title)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = location,
+                            onValueChange = { location = it },
+                            label = { Text(stringResource(R.string.event_location)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Buttons to pick start and end date/time
+                        DatePickerButton(selectedDateStart) { selectedDateStart = it }
+                        DatePickerButton(selectedDateEnd) { selectedDateEnd = it }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Button(
                             onClick = {
-                                // Aktuellen Zeitpunkt für den Start und das Ende des Ereignisses
-                                val startTime = Timestamp.now()
-                                val endTime = Timestamp.now().apply {
-                                    val calendar = Calendar.getInstance()
-                                    calendar.time = toDate() // Umwandeln in Date
-                                    calendar.add(Calendar.HOUR, 2) // Zwei Stunden hinzufügen
-                                    this.toDate().time + 2 * 60 * 60 * 1000 // 2 Stunden später
-                                }
-
                                 val newEvent = CalendarEvent(
-                                    id = nextEventId.toString(),
-                                    title = "Brettspielabend",
-                                    location = "Bei Alex",
-                                    startTime = startTime,
-                                    endTime = endTime
+                                    id = "", // Initially empty; will be set in saveEventToFirestore
+                                    title = title,
+                                    location = location,
+                                    startTime = Timestamp(selectedDateStart.time),
+                                    endTime = Timestamp(selectedDateEnd.time)
                                 )
 
-                                addEventToCalendar(newEvent)
+                                addEventToCalendar(newEvent) // Save the event to the calendar
 
-                                // Speichern des Ereignisses in Firestore und aktualisieren der Ereignisliste
+                                // Save the event to Firestore
                                 saveEventToFirestore(newEvent, calendarEvents) { eventId ->
-                                    // Hier rufen wir fetchCalendarEvents auf, um die neuesten Daten zu holen
-                                    fetchCalendarEvents(calendarEvents)
-                                    nextEventId++ // Update nextEventId
+                                    Log.d("GameScheduleActivity", getString(R.string.event_successfully_added, eventId))
+                                    newEvent.id = eventId
+                                    calendarEvents.add(newEvent)
+                                    fetchCalendarEvents(calendarEvents) // Refresh calendar events
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
@@ -177,7 +192,7 @@ class GameScheduleActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .padding(8.dp)
                         ) {
-                            Text(text = "Termin hinzufügen", color = Color.White)
+                            Text(text = stringResource(R.string.add_event), color = Color.White)
                         }
                     }
                 }
@@ -185,79 +200,140 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
+    @Composable
+    fun DatePickerButton(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
+        val context = LocalContext.current
+        val openDialog = remember { mutableStateOf(false) }
+
+        // Zeige den Dialog an, wenn openDialog.value true ist
+        if (openDialog.value) {
+            // Initialisiere den Dialog außerhalb von LaunchedEffect
+            val datePickerDialog = remember {
+                DatePickerDialog(
+                    context,
+                    { _, year, month, dayOfMonth ->
+                        // Setze das Datum im Calendar-Objekt
+                        selectedDate.set(year, month, dayOfMonth)
+
+                        // Erstelle den TimePickerDialog
+                        val timePickerDialog = TimePickerDialog(
+                            context,
+                            { _, hourOfDay, minute ->
+                                // Setze die Uhrzeit im Calendar-Objekt
+                                selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                                selectedDate.set(Calendar.MINUTE, minute)
+
+                                // Rufe die onDateSelected Callback-Funktion auf
+                                onDateSelected(selectedDate)
+                                openDialog.value = false // Schließen des Dialogs nach Auswahl
+                            },
+                            selectedDate.get(Calendar.HOUR_OF_DAY),
+                            selectedDate.get(Calendar.MINUTE),
+                            true // 24-Stunden-Format
+                        )
+                        timePickerDialog.show() // Zeige den TimePickerDialog an
+                    },
+                    selectedDate.get(Calendar.YEAR),
+                    selectedDate.get(Calendar.MONTH),
+                    selectedDate.get(Calendar.DAY_OF_MONTH)
+                )
+            }
+
+            DisposableEffect(Unit) {
+                datePickerDialog.show()
+                onDispose {
+                    openDialog.value = false // Schließe den Dialog, wenn der Composable entfernt wird
+                }
+            }
+        }
+
+        Button(onClick = { openDialog.value = true }) {
+            Text(
+                text = if (selectedDate.timeInMillis == Calendar.getInstance().timeInMillis) {
+                    "Startdatum und -uhrzeit wählen"
+                } else {
+                    SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(selectedDate.time)
+                }
+            )
+        }
+    }
+
+
     private fun deleteEvent(event: CalendarEvent) {
         val contentResolver: ContentResolver = contentResolver
         val uri = CalendarContract.Events.CONTENT_URI
 
-        event.id?.let { eventId ->
-            val selection = "${CalendarContract.Events._ID} = ?"
-            val selectionArgs = arrayOf(eventId)
+        val eventId = event.id
 
-            val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
-            if (deletedRows > 0) {
-                Log.d("GameScheduleActivity", "Ereignis erfolgreich gelöscht: $event")
-                deleteEventFromFirestore(event)
-                calendarEvents.remove(event)
-            } else {
-                Log.w("GameScheduleActivity", "Kein Ereignis gefunden zum Löschen: $event")
-            }
-        } ?: run {
-            Log.w("GameScheduleActivity", "Ereignis-ID ist null, kann nicht gelöscht werden.")
+        Log.d("GameScheduleActivity", "Versuche, das Ereignis mit der ID zu löschen: $eventId")
+
+        val selection = "${CalendarContract.Events._ID} = ?"
+        val selectionArgs = arrayOf(eventId)
+
+        val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
+        if (deletedRows > 0) {
+            Toast.makeText(this, getString(R.string.event_successfully_deleted), Toast.LENGTH_SHORT).show()
+            Log.d("GameScheduleActivity", "Ereignis erfolgreich gelöscht: $event")
+            deleteEventFromFirestore(event)
+            calendarEvents.remove(event) // Lokale Liste aktualisieren
+        } else {
+            Toast.makeText(this, getString(R.string.no_event_found), Toast.LENGTH_SHORT).show()
+            Log.d("GameScheduleActivity", "Kein Ereignis gefunden, das gelöscht werden kann: $event")
         }
     }
 
     private fun deleteEventFromFirestore(event: CalendarEvent) {
-        event.id?.let { eventId ->
-            firestore.collection("calendarEvents")
+        val eventId = event.id
+        if (eventId.isNotEmpty()) {
+            firestore.collection("events")
                 .document(eventId)
                 .delete()
                 .addOnSuccessListener {
-                    Log.d("Firestore", "Ereignis erfolgreich aus Firestore gelöscht: $eventId")
+                    Log.d("GameScheduleActivity", "Ereignis erfolgreich aus Firestore gelöscht: $eventId")
                 }
                 .addOnFailureListener { e ->
-                    Log.w("Firestore", "Fehler beim Löschen des Ereignisses: ${e.message}", e)
+                    Log.e("GameScheduleActivity", "Fehler beim Löschen des Ereignisses aus Firestore: $e")
                 }
-        } ?: run {
-            Log.w("Firestore", "Ereignis hat keine ID, kann nicht gelöscht werden.")
         }
     }
 
     private fun addEventToCalendar(event: CalendarEvent) {
-        Log.d("GameScheduleActivity", "Bereite vor, Ereignis hinzuzufügen: $event")
-
-        val intent = Intent(Intent.ACTION_INSERT).apply {
-            data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, event.title)
-            putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startTime.toDate().time) // Konvertieren in Millisekunden
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.endTime.toDate().time) // Konvertieren in Millisekunden
-            putExtra(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.TITLE, event.title)
+            put(CalendarContract.Events.EVENT_LOCATION, event.location)
+            put(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startTime.toDate().time)
+            put(CalendarContract.EXTRA_EVENT_END_TIME, event.endTime.toDate().time)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
         }
 
-        try {
-            startActivity(intent)
-            Log.d("GameScheduleActivity", "Ereignis erfolgreich zum Kalender hinzugefügt.")
-        } catch (e: Exception) {
-            Log.e("GameScheduleActivity", "Fehler beim Hinzufügen des Ereignisses zum Kalender: ${e.message}", e)
+        val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+        if (uri != null) {
+            Log.d("GameScheduleActivity", "Ereignis erfolgreich zum Kalender hinzugefügt: $event")
+            Toast.makeText(this, "Ereignis erfolgreich hinzugefügt", Toast.LENGTH_SHORT).show()
+        } else {
+            Log.e("GameScheduleActivity", "Fehler beim Hinzufügen des Ereignisses zum Kalender")
         }
     }
 
     private fun saveEventToFirestore(event: CalendarEvent, calendarEvents: MutableList<CalendarEvent>, onSuccess: (String) -> Unit) {
         Log.d("Firestore", "Speichere Ereignis: $event")
 
-        // Verwenden Sie die aktuelle ID als Dokument-ID in Firestore
-        val eventId = event.id // Benutzen Sie die manuell zugewiesene ID
+        // Generiere eine neue Firestore-Dokumentreferenz
+        val documentRef = firestore.collection("calendarEvents").document()
+        val eventId = documentRef.id // Die neu generierte ID
 
-        firestore.collection("calendarEvents")
-            .document(eventId) // Verwenden Sie die benutzerdefinierte ID
-            .set(event) // Speichern Sie direkt das CalendarEvent
+        // We assign the Firestore ID to the event
+        event.id = eventId
+
+        // Speichere das Ereignis in Firestore
+        documentRef.set(event)
             .addOnSuccessListener {
-                Log.d("Firestore", "Ereignis hinzugefügt mit ID: $eventId")
-                // Rufen Sie die ID zurück, um zu bestätigen, dass das Speichern erfolgreich war
-                onSuccess(eventId)
+                Log.d("Firestore", getString(R.string.event_successfully_added, eventId))
+                calendarEvents.add(event) // Lokale Liste mit dem Ereignis aktualisieren
+                onSuccess(eventId) // Erfolg mit der neuen Ereignis-ID melden
             }
             .addOnFailureListener { e ->
-                Log.w("Firestore", "Fehler beim Hinzufügen des Ereignisses: ${e.message}", e)
+                Log.e("Firestore", getString(R.string.error_adding_event, e.message), e)
             }
     }
 
@@ -276,7 +352,7 @@ class GameScheduleActivity : ComponentActivity() {
                 Log.d("GameScheduleActivity", "Erfolgreich ${calendarEvents.size} Ereignisse aus Firestore abgerufen")
             }
             .addOnFailureListener { e ->
-                Log.w("GameScheduleActivity", "Fehler beim Abrufen der Ereignisse: ${e.message}", e)
+                Log.w("GameScheduleActivity", getString(R.string.error_fetching_events, e.message), e)
             }
     }
 
@@ -315,20 +391,20 @@ fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
             .fillMaxWidth()
     ) {
         Text(
-            text = "Datum: ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())}",
+            text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
-            color = Color(0xFF318DFF) // Blau für Titel
+            color = Color(0xFF318DFF)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Titel: ${event.title}",
+            text = stringResource(R.string.event_title_display, event.title),
             fontSize = 14.sp,
             color = Color.Black
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Ort: ${event.location}",
+            text = stringResource(R.string.event_location_display, event.location),
             fontSize = 14.sp,
             color = Color.Black
         )
@@ -338,7 +414,7 @@ fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
             modifier = Modifier.align(Alignment.End)
         ) {
-            Text(text = "Entfernen", color = Color.White) // Button-Text auf Deutsch
+            Text(text = stringResource(id = R.string.remove_event), color = Color.White)
         }
     }
 }

@@ -1,3 +1,27 @@
 <resources>
-    <string name="app_name">BoardGamerApp</string>
+    <string name="app_name">Board Gamer App</string>
+    <!-- Titel für die Aktivität -->
+    <string name="schedule_title">Spielplan</string>
+
+    <!-- Titel und Ort des Ereignisses -->
+    <string name="event_title">Ereignistitel</string>
+    <string name="event_location">Ereignisort</string>
+    <string name="event_successfully_added">Ereignis mit ID %1$s erfolgreich hinzugefügt.</string>
+    <string name="event_successfully_deleted">Ereignis erfolgreich gelöscht.</string>
+    <string name="no_event_found">Kein Ereignis gefunden.</string>
+    <string name="open_device_calendar">Öffne den Gerätekalender</string>
+    <string name="add_event">Ereignis hinzufügen</string>
+    <string name="event_date">Ereignisdatum: %1$s</string>
+    <string name="event_title_display">Titel: %1$s</string>
+    <string name="event_location_display">Ort: %1$s</string>
+    <string name="remove_event">Ereignis entfernen</string>
+    <string name="error_fetching_events">Fehler beim Abrufen der Ereignisse: %1$s</string>
+    <string name="error_adding_event">Fehler beim Hinzufügen des Ereignisses: %1$s</string>
+    <string name="error_deleting_event">Fehler beim Löschen des Ereignisses: %1$s</string>
+    <string name="error_no_event_id">Kein Ereignis-ID gefunden, um zu löschen.</string>
+    <string name="back">Zurück</string>
+    <string name="permission_denied">Berechtigungen abgelehnt.</string>
+    <string name="select_start_date">Startdatum auswählen</string>
+    <string name="select_end_date">Enddatum auswählen</string>
+
 </resources>
