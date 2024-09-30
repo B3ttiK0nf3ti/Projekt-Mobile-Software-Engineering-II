@@ -71,7 +71,10 @@ class GameScheduleActivity : ComponentActivity() {
             val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
             val coroutineScope = rememberCoroutineScope()
             var selectedDateStart by remember { mutableStateOf(Calendar.getInstance()) }
-            var selectedDateEnd by remember { mutableStateOf(Calendar.getInstance().apply { add(Calendar.HOUR, 2) }) }
+            var selectedDateEnd by remember {
+                mutableStateOf(
+                    Calendar.getInstance().apply { add(Calendar.HOUR, 2) })
+            }
 
             var isLoading by remember { mutableStateOf(true) }
 
@@ -181,10 +184,17 @@ class GameScheduleActivity : ComponentActivity() {
 
                                 // Save the event to Firestore
                                 saveEventToFirestore(newEvent, calendarEvents) { eventId ->
-                                    Log.d("GameScheduleActivity", getString(R.string.event_successfully_added, eventId))
+                                    Log.d(
+                                        "GameScheduleActivity",
+                                        getString(R.string.event_successfully_added, eventId)
+                                    )
                                     newEvent.id = eventId
                                     calendarEvents.add(newEvent)
                                     fetchCalendarEvents(calendarEvents) // Refresh calendar events
+
+                                    // Eingabefelder zurücksetzen
+                                    title = ""
+                                    location = ""
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
@@ -242,7 +252,8 @@ class GameScheduleActivity : ComponentActivity() {
             DisposableEffect(Unit) {
                 datePickerDialog.show()
                 onDispose {
-                    openDialog.value = false // Schließe den Dialog, wenn der Composable entfernt wird
+                    openDialog.value =
+                        false // Schließe den Dialog, wenn der Composable entfernt wird
                 }
             }
         }
@@ -252,7 +263,10 @@ class GameScheduleActivity : ComponentActivity() {
                 text = if (selectedDate.timeInMillis == Calendar.getInstance().timeInMillis) {
                     "Startdatum und -uhrzeit wählen"
                 } else {
-                    SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(selectedDate.time)
+                    SimpleDateFormat(
+                        "dd.MM.yyyy HH:mm",
+                        Locale.getDefault()
+                    ).format(selectedDate.time)
                 }
             )
         }
@@ -263,38 +277,37 @@ class GameScheduleActivity : ComponentActivity() {
         val contentResolver: ContentResolver = contentResolver
         val uri = CalendarContract.Events.CONTENT_URI
 
-        val eventId = event.id
-
-        Log.d("GameScheduleActivity", "Versuche, das Ereignis mit der ID zu löschen: $eventId")
-
+        // Verwende die Kalender-ID, um das Ereignis zu löschen
         val selection = "${CalendarContract.Events._ID} = ?"
-        val selectionArgs = arrayOf(eventId)
+        val selectionArgs = arrayOf(event.id) // Die ID, die im Kalender gespeichert ist
 
+        Log.d("GameScheduleActivity", "Attempting to delete event with ID: ${event.id}")
+
+        // Zuerst das Ereignis aus Firestore löschen, ID des Ereignisses übergeben
+        deleteEventFromFirestore(event.id) // Hier die ID des Ereignisses verwenden
+
+        // Dann versuche, das Ereignis aus dem Kalender zu löschen
         val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
         if (deletedRows > 0) {
             Toast.makeText(this, getString(R.string.event_successfully_deleted), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "Ereignis erfolgreich gelöscht: $event")
-            deleteEventFromFirestore(event)
-            calendarEvents.remove(event) // Lokale Liste aktualisieren
+            Log.d("GameScheduleActivity", "Event successfully deleted from calendar: $event")
+            calendarEvents.remove(event) // Update local list
         } else {
             Toast.makeText(this, getString(R.string.no_event_found), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "Kein Ereignis gefunden, das gelöscht werden kann: $event")
+            Log.d("GameScheduleActivity", "No event found that can be deleted: $event")
         }
     }
 
-    private fun deleteEventFromFirestore(event: CalendarEvent) {
-        val eventId = event.id
-        if (eventId.isNotEmpty()) {
-            firestore.collection("events")
-                .document(eventId)
-                .delete()
-                .addOnSuccessListener {
-                    Log.d("GameScheduleActivity", "Ereignis erfolgreich aus Firestore gelöscht: $eventId")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("GameScheduleActivity", "Fehler beim Löschen des Ereignisses aus Firestore: $e")
-                }
-        }
+    fun deleteEventFromFirestore(eventId: String) {
+        val documentRef = firestore.collection("calendarEvents").document(eventId)
+
+        documentRef.delete()
+            .addOnSuccessListener {
+                Log.d("GameScheduleActivity", "Event successfully deleted from Firestore: $eventId")
+            }
+            .addOnFailureListener { e ->
+                Log.e("GameScheduleActivity", "Error deleting event: $e")
+            }
     }
 
     private fun addEventToCalendar(event: CalendarEvent) {
@@ -308,14 +321,24 @@ class GameScheduleActivity : ComponentActivity() {
 
         val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
         if (uri != null) {
-            Log.d("GameScheduleActivity", "Ereignis erfolgreich zum Kalender hinzugefügt: $event")
-            Toast.makeText(this, "Ereignis erfolgreich hinzugefügt", Toast.LENGTH_SHORT).show()
+            // Hole die ID des neu hinzugefügten Ereignisses
+            val eventId = uri.lastPathSegment ?: run {
+                Log.e("GameScheduleActivity", "Event ID is null")
+                return
+            }
+            event.id = eventId // Setze die ID des Ereignisses auf die des Kalenders
+            Log.d("GameScheduleActivity", "Event successfully added to calendar: $event")
+            Toast.makeText(this, "Event successfully added to calendar", Toast.LENGTH_SHORT).show()
         } else {
-            Log.e("GameScheduleActivity", "Fehler beim Hinzufügen des Ereignisses zum Kalender")
+            Log.e("GameScheduleActivity", "Error adding event to calendar")
         }
     }
 
-    private fun saveEventToFirestore(event: CalendarEvent, calendarEvents: MutableList<CalendarEvent>, onSuccess: (String) -> Unit) {
+    private fun saveEventToFirestore(
+        event: CalendarEvent,
+        calendarEvents: MutableList<CalendarEvent>,
+        onSuccess: (String) -> Unit
+    ) {
         Log.d("Firestore", "Speichere Ereignis: $event")
 
         // Generiere eine neue Firestore-Dokumentreferenz
@@ -323,7 +346,7 @@ class GameScheduleActivity : ComponentActivity() {
         val eventId = documentRef.id // Die neu generierte ID
 
         // We assign the Firestore ID to the event
-        event.id = eventId
+        event.id = documentRef.id
 
         // Speichere das Ereignis in Firestore
         documentRef.set(event)
@@ -341,18 +364,29 @@ class GameScheduleActivity : ComponentActivity() {
         firestore.collection("calendarEvents")
             .get()
             .addOnSuccessListener { documents ->
-                calendarEvents.clear() // Zuerst die Liste leeren
+                calendarEvents.clear() // Clear the list first
 
                 for (document in documents) {
-                    val event = document.toObject(CalendarEvent::class.java) // Umwandeln des Dokuments in ein CalendarEvent
-                    event.id = document.id // ID vom Dokument zuweisen
-                    calendarEvents.add(event) // Hinzufügen des Ereignisses zur Liste
+                    val event =
+                        document.toObject(CalendarEvent::class.java) // Convert to CalendarEvent
+                    event.id = document.id // Assign document ID to the event
+                    calendarEvents.add(event) // Add event to the list
                 }
 
-                Log.d("GameScheduleActivity", "Erfolgreich ${calendarEvents.size} Ereignisse aus Firestore abgerufen")
+                // Sortiere die Ereignisse nach Startzeit
+                calendarEvents.sortBy { it.startTime.toDate() }
+
+                Log.d(
+                    "GameScheduleActivity",
+                    "Successfully fetched ${calendarEvents.size} events from Firestore"
+                )
             }
             .addOnFailureListener { e ->
-                Log.w("GameScheduleActivity", getString(R.string.error_fetching_events, e.message), e)
+                Log.w(
+                    "GameScheduleActivity",
+                    getString(R.string.error_fetching_events, e.message),
+                    e
+                )
             }
     }
 
@@ -369,6 +403,7 @@ class GameScheduleActivity : ComponentActivity() {
                 Log.d("GameScheduleActivity", "Kalenderberechtigungen bereits erteilt")
                 fetchCalendarEvents(calendarEvents)
             }
+
             else -> {
                 Log.d("GameScheduleActivity", "Anfordern von Kalenderberechtigungen")
                 requestPermissionLauncher.launch(
@@ -382,7 +417,7 @@ class GameScheduleActivity : ComponentActivity() {
     }
 }
 
-@Composable
+    @Composable
 fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
     Column(
         modifier = Modifier
