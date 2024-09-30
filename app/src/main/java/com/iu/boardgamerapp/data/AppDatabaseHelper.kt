@@ -25,32 +25,21 @@ class AppDatabaseHelper(context: Context) {
             if (task.isSuccessful) {
                 val firebaseId = task.result // Firebase Installation ID abrufen
 
-                // Abrufen der Anzahl der Benutzer, um eine neue ID zu generieren
-                db.collection(USERS_COLLECTION).get()
-                    .addOnSuccessListener { result ->
-                        val nextId = result.size() + 1
+                // Benutzer-Daten mit Firebase Installation ID erstellen
+                val userData = hashMapOf(
+                    "name" to name,
+                    "isHost" to false,
+                    "firebaseInstallationId" to firebaseId // Firebase Installation ID hinzufügen
+                )
 
-                        // Benutzer-Daten mit Firebase Installation ID erstellen
-                        val userData = hashMapOf(
-                            "id" to nextId,
-                            "name" to name,
-                            "isHost" to false,
-                            "firebaseInstallationId" to firebaseId // Firebase Installation ID hinzufügen
-                        )
-
-                        // Benutzer in der Datenbank speichern
-                        db.collection(USERS_COLLECTION).document("$nextId").set(userData)
-                            .addOnSuccessListener {
-                                Log.d(TAG, "User successfully added with ID: $nextId and Firebase Installation ID: $firebaseId")
-                                onComplete(true)
-                            }
-                            .addOnFailureListener { e ->
-                                Log.w(TAG, "Error adding user", e)
-                                onComplete(false)
-                            }
+                // Benutzer in der Datenbank speichern
+                db.collection(USERS_COLLECTION).document(firebaseId).set(userData)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "User successfully added with Firebase Installation ID: $firebaseId")
+                        onComplete(true)
                     }
                     .addOnFailureListener { e ->
-                        Log.w(TAG, "Error getting user count", e)
+                        Log.w(TAG, "Error adding user", e)
                         onComplete(false)
                     }
             } else {
@@ -83,12 +72,10 @@ class AppDatabaseHelper(context: Context) {
                 val firebaseId = task.result
 
                 db.collection(USERS_COLLECTION)
-                    .whereEqualTo("firebaseInstallationId", firebaseId)
-                    .limit(1)
+                    .document(firebaseId)
                     .get()
-                    .addOnSuccessListener { result ->
-                        if (!result.isEmpty) {
-                            val document = result.documents.first()
+                    .addOnSuccessListener { document ->
+                        if (document.exists()) {
                             onComplete(document.getString("name"))
                         } else {
                             onComplete(null)

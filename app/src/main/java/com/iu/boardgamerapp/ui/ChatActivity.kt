@@ -49,11 +49,11 @@ class ChatActivity : ComponentActivity() {
     }
 }
 
-    data class ChatMessage(
-        val user: String = "",
-        val message: String = "",
-        val timestamp: String = ""
-    )
+data class ChatMessage(
+    val user: String = "",
+    val message: String = "",
+    val timestamp: String = ""
+)
 
 @Composable
 fun ChatScreen(userName: String, onBack: () -> Unit) {
