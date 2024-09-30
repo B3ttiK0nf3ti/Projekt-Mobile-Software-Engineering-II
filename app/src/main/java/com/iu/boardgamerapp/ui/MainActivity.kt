@@ -31,10 +31,9 @@ import java.util.*
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
-        // Übergebe den aktuellen Kontext und erstelle die notwendigen Instanzen
-        val databaseHelper = AppDatabaseHelper(this) // Kontext übergeben
-        val userRepository = UserRepository(databaseHelper) // Übergebe den DatabaseHelper
-        MainViewModelFactory(userRepository, databaseHelper, this) // Factory mit allen notwendigen Werten erstellen
+        val databaseHelper = AppDatabaseHelper(this)
+        val userRepository = UserRepository(databaseHelper)
+        MainViewModelFactory(userRepository, databaseHelper, this)
     }
 
     private lateinit var hostRotationActivityResultLauncher: ActivityResultLauncher<Intent>
@@ -42,17 +41,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Überprüfe, ob der Nutzer eingeloggt ist
+        checkUserLoggedIn()
+
         // Initialisiere den ActivityResultLauncher für die HostRotationActivity
         hostRotationActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
-                // Wenn der Gastgeber erfolgreich gewechselt wurde, lade die aktuellen Daten neu
-                viewModel.loadCurrentHost() // Lade den aktuellen Gastgeber
+                viewModel.loadCurrentHost()
                 Toast.makeText(this, "Gastgeber erfolgreich gewechselt!", Toast.LENGTH_SHORT).show()
             }
         }
 
         // Observer für die Benutzerliste
-        viewModel.loadUsers() // Lade die Benutzerliste
+        viewModel.loadUsers()
         viewModel.userList.observe(this) { users ->
             Log.d("MainActivity", "Benutzerliste aus dem ViewModel: ${users.joinToString()}")
             if (users.isEmpty()) {
@@ -65,14 +66,12 @@ class MainActivity : ComponentActivity() {
             BoardGamerAppTheme {
                 val navController = rememberNavController()
 
-                // Setup NavHost mit dem navController
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
                         MainScreen(
                             viewModel = viewModel,
                             navController = navController,
                             onNavigateToGameSchedule = {
-                                // Navigiere zu GameScheduleActivity
                                 startActivity(
                                     Intent(
                                         this@MainActivity,
@@ -81,7 +80,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             },
                             onNavigateToHostRotation = {
-                                // Navigiere zur HostRotationActivity und verwende den ActivityResultLauncher
                                 hostRotationActivityResultLauncher.launch(
                                     Intent(
                                         this@MainActivity,
@@ -92,13 +90,22 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-
-
             }
         }
-
     }
 
-
+    private fun checkUserLoggedIn() {
+        val databaseHelper = AppDatabaseHelper(this)
+        databaseHelper.getUserWithFirebaseID { username ->
+            if (username == null) {
+                // Nutzer ist nicht eingeloggt, starte LoginActivity
+                val intent = Intent(this, LoginActivity::class.java)
+                startActivity(intent)
+                finish() // Beende MainActivity, damit der Nutzer nicht zurückkehren kann
+            } else {
+                // Setze den Nutzernamen im ViewModel
+                viewModel.setUserName(username)
+            }
+        }
+    }
 }
-

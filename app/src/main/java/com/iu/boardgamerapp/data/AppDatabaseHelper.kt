@@ -5,7 +5,9 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.installations.FirebaseInstallations
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
+import com.iu.boardgamerapp.ui.datamodel.User
 
 class AppDatabaseHelper(context: Context) {
 
@@ -19,29 +21,43 @@ class AppDatabaseHelper(context: Context) {
 
     // Benutzer hinzufügen
     fun addUser(name: String, onComplete: (Boolean) -> Unit) {
-        db.collection(USERS_COLLECTION).get()
-            .addOnSuccessListener { result ->
-                val nextId = result.size() + 1
-                val userData = hashMapOf(
-                    "id" to nextId,
-                    "name" to name,
-                    "isHost" to false
-                )
+        FirebaseInstallations.getInstance().id.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val firebaseId = task.result // Firebase Installation ID abrufen
 
-                db.collection(USERS_COLLECTION).document("$nextId").set(userData)
-                    .addOnSuccessListener {
-                        Log.d(TAG, "User successfully added with ID: $nextId")
-                        onComplete(true)
+                // Abrufen der Anzahl der Benutzer, um eine neue ID zu generieren
+                db.collection(USERS_COLLECTION).get()
+                    .addOnSuccessListener { result ->
+                        val nextId = result.size() + 1
+
+                        // Benutzer-Daten mit Firebase Installation ID erstellen
+                        val userData = hashMapOf(
+                            "id" to nextId,
+                            "name" to name,
+                            "isHost" to false,
+                            "firebaseInstallationId" to firebaseId // Firebase Installation ID hinzufügen
+                        )
+
+                        // Benutzer in der Datenbank speichern
+                        db.collection(USERS_COLLECTION).document("$nextId").set(userData)
+                            .addOnSuccessListener {
+                                Log.d(TAG, "User successfully added with ID: $nextId and Firebase Installation ID: $firebaseId")
+                                onComplete(true)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.w(TAG, "Error adding user", e)
+                                onComplete(false)
+                            }
                     }
                     .addOnFailureListener { e ->
-                        Log.w(TAG, "Error adding user", e)
+                        Log.w(TAG, "Error getting user count", e)
                         onComplete(false)
                     }
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error getting user count", e)
+            } else {
+                Log.e(TAG, "Error fetching Firebase Installation ID", task.exception)
                 onComplete(false)
             }
+        }
     }
 
     // Benutzername abrufen
@@ -61,6 +77,34 @@ class AppDatabaseHelper(context: Context) {
             }
     }
 
+    fun getUserWithFirebaseID(onComplete: (String?) -> Unit) {
+        FirebaseInstallations.getInstance().id.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val firebaseId = task.result
+
+                db.collection(USERS_COLLECTION)
+                    .whereEqualTo("firebaseInstallationId", firebaseId)
+                    .limit(1)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        if (!result.isEmpty) {
+                            val document = result.documents.first()
+                            onComplete(document.getString("name"))
+                        } else {
+                            onComplete(null)
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Error getting user", e)
+                        onComplete(null)
+                    }
+            } else {
+                Log.e(TAG, "Error fetching Firebase Installation ID", task.exception)
+                onComplete(null)
+            }
+        }
+    }
+
     // Überprüfen, ob Benutzer existiert
     fun checkUserExists(name: String, onComplete: (Boolean) -> Unit) {
         val trimmedName = name.trim() // Hier trimmen wir den Namen
@@ -78,5 +122,4 @@ class AppDatabaseHelper(context: Context) {
                 onComplete(false) // Callback mit false im Fehlerfall
             }
     }
-
 }

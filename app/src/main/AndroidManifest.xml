@@ -33,6 +33,9 @@
             android:name=".ui.GameChoosingActivity">
         </activity>
         <activity
+            android:name=".ui.LoginActivity">
+        </activity>
+        <activity
             android:name=".ui.GameScheduleActivity">
         </activity>
         <activity

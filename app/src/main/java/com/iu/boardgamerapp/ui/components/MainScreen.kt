@@ -46,48 +46,11 @@ fun MainScreen(
     onNavigateToHostRotation: () -> Unit
 ) {
     val userName = viewModel.userName.value
-    val userExists by viewModel.userExists.observeAsState(false)
     val currentHost by viewModel.currentHost.observeAsState("Niemand")
     val rating by viewModel.rating.observeAsState(0)
     val userList by viewModel.userList.observeAsState(emptyList())
 
-    // Dialog-Zustände
-    var showNameDialog by remember { mutableStateOf(userName.isEmpty() && !userExists) }
-
     val context = LocalContext.current
-
-    // Überprüfe, ob der Benutzer existiert
-    LaunchedEffect(userName) {
-        if (userName.isNotEmpty()) {
-            viewModel.checkUserExists(userName) { exists ->
-                if (exists) {
-                    // Wenn der Benutzer existiert, kannst du hier eine Nachricht oder eine Aktion ausführen
-                    Log.d("MainScreen", "Benutzer existiert: $userName")
-                } else {
-                    // Wenn der Benutzer nicht existiert, zeige das Dialogfenster an
-                    showNameDialog = true // Oder eine Methode zum Anzeigen des Dialogs aufrufen
-                }
-            }
-        } else {
-            // Wenn der Benutzername leer ist, zeige das Dialogfenster an
-            showNameDialog = true
-        }
-    }
-
-// Dialog für Benutzernamen
-    if (showNameDialog) {
-        UserNameInputDialog(
-            onNameEntered = { name ->
-                val trimmedName = name.trim() // Leerzeichen am Anfang und Ende entfernen
-                if (trimmedName.isNotEmpty()) {
-                    viewModel.saveUser(trimmedName) // Benutzer speichern
-                    viewModel.saveUserNameToPreferences(trimmedName) // Benutzername in Shared Preferences speichern
-                    showNameDialog = false
-                }
-            },
-            onDismiss = { showNameDialog = false }
-        )
-    }
 
     Column(
         modifier = Modifier
@@ -129,7 +92,6 @@ fun MainScreen(
             valueRange = 0f..5f,
             steps = 4
         )
-
 
         Spacer(modifier = Modifier.height(16.dp))
 

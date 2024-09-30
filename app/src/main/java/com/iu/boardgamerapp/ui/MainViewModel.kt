@@ -21,8 +21,8 @@ class MainViewModel(
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
-    private val _userName = mutableStateOf("")
-    val userName: State<String> get() = _userName
+    private val _userName = MutableLiveData<String>()
+    val userName: LiveData<String> get() = _userName
 
     private val _userExists = MutableLiveData<Boolean>()
     val userExists: LiveData<Boolean> = _userExists
@@ -65,6 +65,10 @@ class MainViewModel(
 
     fun addUser(name: String, callback: (Boolean) -> Unit) {
         userRepository.addUser(name, callback)
+    }
+
+    fun setUserName(name: String) {
+        _userName.value = name
     }
 
     fun saveUser(name: String) {
