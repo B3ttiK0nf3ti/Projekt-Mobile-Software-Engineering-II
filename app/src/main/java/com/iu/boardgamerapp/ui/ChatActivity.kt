@@ -38,7 +38,7 @@ class ChatActivity : ComponentActivity() {
         firestore = FirebaseFirestore.getInstance()
         dbHelper = AppDatabaseHelper(this)
 
-        dbHelper.getUser { userName ->
+        dbHelper.getUserWithFirebaseID { userName ->
             val name = userName ?: "Unknown"
             Log.d("ChatActivity", "UserName retrieved: $name")
 
