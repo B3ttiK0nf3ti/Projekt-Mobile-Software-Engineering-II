@@ -1,8 +1,11 @@
 package com.iu.boardgamerapp.ui.datamodel
 
+import com.google.firebase.Timestamp
+
 data class CalendarEvent(
-    val title: String = "",          // Titel des Ereignisses
-    val location: String = "",       // Ort des Ereignisses
-    val startTime: Long = 0,        // Startzeit des Ereignisses
-    val endTime: Long = 0           // Endzeit des Ereignisses
+    var id: String = "",
+    var title: String = "",
+    var location: String = "",
+    var startTime: Timestamp = Timestamp.now(),
+    var endTime: Timestamp = Timestamp.now()
 )
