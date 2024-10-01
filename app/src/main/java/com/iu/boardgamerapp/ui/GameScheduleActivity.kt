@@ -279,7 +279,7 @@ class GameScheduleActivity : ComponentActivity() {
 
         // Verwende die Kalender-ID, um das Ereignis zu löschen
         val selection = "${CalendarContract.Events._ID} = ?"
-        val selectionArgs = arrayOf(event.id) // Die ID, die im Kalender gespeichert ist
+        val selectionArgs = arrayOf(event.id) // Überprüfen, ob diese ID wirklich die Kalender-ID ist
 
         Log.d("GameScheduleActivity", "Attempting to delete event with ID: ${event.id}")
 
@@ -290,17 +290,18 @@ class GameScheduleActivity : ComponentActivity() {
         val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
         if (deletedRows > 0) {
             Toast.makeText(this, getString(R.string.event_successfully_deleted), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "Event successfully deleted from calendar: $event")
+            Log.d("GameScheduleActivity", "Successfully deleted $deletedRows rows from calendar")
             calendarEvents.remove(event) // Update local list
         } else {
             Toast.makeText(this, getString(R.string.no_event_found), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "No event found that can be deleted: $event")
+            Log.d("GameScheduleActivity", "No rows were deleted from the calendar")
         }
     }
 
     fun deleteEventFromFirestore(eventId: String) {
-        val documentRef = firestore.collection("calendarEvents").document(eventId)
+        Log.d("GameScheduleActivity", "Deleting Firestore event with ID: $eventId")
 
+        val documentRef = firestore.collection("calendarEvents").document(eventId)
         documentRef.delete()
             .addOnSuccessListener {
                 Log.d("GameScheduleActivity", "Event successfully deleted from Firestore: $eventId")
