@@ -37,6 +37,10 @@ import com.iu.boardgamerapp.ui.ChatActivity
 import com.iu.boardgamerapp.ui.GameChoosingActivity
 import com.iu.boardgamerapp.ui.MainViewModel
 import com.iu.boardgamerapp.ui.UserNameInputDialog
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.tooling.preview.Preview
+import com.iu.boardgamerapp.ui.RatingActivity
 
 @Composable
 fun MainScreen(
@@ -46,54 +50,57 @@ fun MainScreen(
     onNavigateToHostRotation: () -> Unit
 ) {
     val userName = viewModel.userName.value
-    val currentHost by viewModel.currentHost.observeAsState("Niemand")
-    val rating by viewModel.rating.observeAsState(0)
+    val currentHost by viewModel.currentHost.observeAsState("Niemand")  // Den aktuellen Gastgeber observieren
     val userList by viewModel.userList.observeAsState(emptyList())
 
     val context = LocalContext.current
+    val scrollState = rememberScrollState() // ScrollState für die Spalte
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Willkommen, ${userName ?: "Gast"}!")
-        Spacer(modifier = Modifier.height(16.dp))
-        DateDisplay(date = "12.09.2024")
-        Spacer(modifier = Modifier.height(16.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Willkommen, ${userName ?: "Gast"}!")
+            Spacer(modifier = Modifier.height(16.dp))
+            DateDisplay(date = "12.09.2024")
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Button zum Aufrufen der GameChoosingActivity
-        Button(onClick = {
-            val intent = Intent(context, GameChoosingActivity::class.java)
-            context.startActivity(intent)
-        }) {
-            Text("Abstimmen")
+            // Button zum Aufrufen der GameChoosingActivity
+            Button(onClick = {
+                val intent = Intent(context, GameChoosingActivity::class.java)
+                context.startActivity(intent)
+            }) {
+                Text("Abstimmen")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Aktueller Gastgeber: $currentHost")
+
+
+
+            Button(onClick = { onNavigateToHostRotation() }) {
+                Text("Gastgeber ändern")
+            }
+
+            // Button zum Öffnen der RatingActivity, bei dem der aktuelle Gastgeber übergeben wird
+            Button(onClick = {
+                // Hier wird der Intent für die RatingActivity erstellt und der aktuelle Gastgeber übergeben
+                val intent = Intent(context, RatingActivity::class.java)
+                intent.putExtra("currentHost", currentHost)  // Übergabe des aktuellen Gastgebers
+                context.startActivity(intent) // Startet die RatingActivity
+            }) {
+                Text("Bewertung abgeben") // Button, um zur Bewertung zu gehen
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            BoxWithBorder(content = "Ort: Bei Alex")
+            Spacer(modifier = Modifier.height(16.dp))
+            BoxWithBorder(content = "Essen: Pizza")
+            }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Aktueller Gastgeber: $currentHost") // Zeige den aktuellen Gastgeber an
-
-        Button(onClick = { onNavigateToHostRotation() }) {
-            Text("Gastgeber ändern")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        BoxWithBorder(content = "Ort: Bei Alex")
-        Spacer(modifier = Modifier.height(16.dp))
-        BoxWithBorder(content = "Essen: Pizza")
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("Bewertung: $rating")
-        Slider(
-            value = rating.toFloat(),
-            onValueChange = { viewModel.updateRating(it.toInt()) },
-            valueRange = 0f..5f,
-            steps = 4
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -132,4 +139,3 @@ fun MainScreen(
             }
         }
     }
-}

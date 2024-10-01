@@ -41,5 +41,8 @@
         <activity
             android:name=".ui.HostRotationActivity">
         </activity>
+        <activity
+            android:name=".ui.RatingActivity">
+        </activity>
     </application>
 </manifest>

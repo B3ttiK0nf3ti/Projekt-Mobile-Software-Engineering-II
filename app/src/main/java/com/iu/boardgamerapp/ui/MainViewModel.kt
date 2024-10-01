@@ -58,6 +58,8 @@ class MainViewModel(
 
     private var currentHostName: String? = null
 
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+
     init {
         loadUsers()
         loadCurrentHost()
@@ -163,6 +165,27 @@ class MainViewModel(
         }
     }
 
+    // Beispiel für eine Funktion, um die Bewertungen in Firestore zu speichern
+    fun submitRatings(hostRating: Int, foodRating: Int, eveningRating: Int) {
+        // Erstelle ein Datenobjekt für die Bewertungen
+        val ratings = hashMapOf(
+            "hostRating" to hostRating,
+            "foodRating" to foodRating,
+            "eveningRating" to eveningRating
+        )
+
+        // Speichere die Bewertungen in Firestore (z.B. in der Collection "ratings")
+        firestore.collection("ratings")
+            .add(ratings)
+            .addOnSuccessListener {
+                // Erfolgreiches Hinzufügen der Bewertungen
+                Log.d("MainViewModel", "Bewertungen erfolgreich eingereicht")
+            }
+            .addOnFailureListener { e ->
+                // Fehler beim Hinzufügen der Bewertungen
+                Log.w("MainViewModel", "Fehler beim Einreichen der Bewertungen", e)
+            }
+
     fun voteForGame(game: String) {
         val updatedVotes = _votes.value?.toMutableMap() ?: mutableMapOf()
         updatedVotes[game] = (updatedVotes[game] ?: 0) + 1
@@ -209,4 +232,5 @@ class MainViewModel(
     fun navigateToHostRotation() {
         onNavigateToHostRotation?.invoke()
     }
+}
 }
