@@ -41,7 +41,16 @@ import java.util.Calendar
 import androidx.compose.ui.platform.LocalContext
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.border
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Text
 import java.util.*
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Text
 
 class GameScheduleActivity : ComponentActivity() {
 
@@ -62,6 +71,7 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
@@ -149,8 +159,8 @@ class GameScheduleActivity : ComponentActivity() {
                         OutlinedTextField(
                             value = title,
                             onValueChange = { title = it },
-                            label = { Text(stringResource(R.string.event_title)) },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text("Ereignistitel") },
+                            modifier = Modifier.fillMaxWidth(),
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -159,7 +169,7 @@ class GameScheduleActivity : ComponentActivity() {
                             value = location,
                             onValueChange = { location = it },
                             label = { Text(stringResource(R.string.event_location)) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -168,7 +178,7 @@ class GameScheduleActivity : ComponentActivity() {
                         DatePickerButton(selectedDateStart) { selectedDateStart = it }
                         DatePickerButton(selectedDateEnd) { selectedDateEnd = it }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(48.dp))
 
                         Button(
                             onClick = {
@@ -258,7 +268,13 @@ class GameScheduleActivity : ComponentActivity() {
             }
         }
 
-        Button(onClick = { openDialog.value = true }) {
+        Button(
+            onClick = { openDialog.value = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
+            modifier = Modifier
+                .wrapContentWidth()
+                .padding(8.dp)
+        ) {
             Text(
                 text = if (selectedDate.timeInMillis == Calendar.getInstance().timeInMillis) {
                     "Startdatum und -uhrzeit wählen"
@@ -267,6 +283,7 @@ class GameScheduleActivity : ComponentActivity() {
                         "dd.MM.yyyy HH:mm",
                         Locale.getDefault()
                     ).format(selectedDate.time)
+
                 }
             )
         }
@@ -419,38 +436,38 @@ class GameScheduleActivity : ComponentActivity() {
 }
 
     @Composable
-fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .background(Color.White, shape = RoundedCornerShape(8.dp))
-            .padding(16.dp)
-            .fillMaxWidth()
-    ) {
-        Text(
-            text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Color(0xFF318DFF)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = stringResource(R.string.event_title_display, event.title),
-            fontSize = 14.sp,
-            color = Color.Black
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = stringResource(R.string.event_location_display, event.location),
-            fontSize = 14.sp,
-            color = Color.Black
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = onDelete,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-            modifier = Modifier.align(Alignment.End)
+    fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
+        Column(
+            modifier = Modifier
+                .background(Color.White, shape = RoundedCornerShape(8.dp)) // Weißer Hintergrund
+                .padding(16.dp)
+                .fillMaxWidth()
         ) {
-            Text(text = stringResource(id = R.string.remove_event), color = Color.White)
-        }
+            Text(
+                text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF318DFF)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.event_title_display, event.title),
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.event_location_display, event.location),
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onDelete,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(text = stringResource(id = R.string.remove_event), color = Color.White)
+            }
     }
 }

@@ -122,7 +122,12 @@ class RatingActivity : ComponentActivity() {
                     value = hostRating,
                     onValueChange = { hostRating = it },
                     valueRange = 0f..5f,
-                    steps = 4
+                    steps = 4,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
+                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
+                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
+                    )
                 )
                 Text("Gastgeber Bewertung: ${hostRating.toInt()}")
 
@@ -134,7 +139,12 @@ class RatingActivity : ComponentActivity() {
                     value = foodRating,
                     onValueChange = { foodRating = it },
                     valueRange = 0f..5f,
-                    steps = 4
+                    steps = 4,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
+                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
+                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
+                    )
                 )
                 Text("Essen Bewertung: ${foodRating.toInt()}")
 
@@ -146,7 +156,12 @@ class RatingActivity : ComponentActivity() {
                     value = eveningRating,
                     onValueChange = { eveningRating = it },
                     valueRange = 0f..5f,
-                    steps = 4
+                    steps = 4,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
+                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
+                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
+                    )
                 )
                 Text("Abend Bewertung: ${eveningRating.toInt()}")
 

@@ -149,6 +149,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
         }
     }
 
+
     // Methode, um den aktuellen Gastgeber aus der Firestore-Datenbank zu laden
     fun getCurrentHost(callback: (String?) -> Unit) {
         val hostCollection = db.collection(USERS_COLLECTION)

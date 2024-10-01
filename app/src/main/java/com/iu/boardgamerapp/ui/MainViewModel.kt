@@ -63,6 +63,7 @@ class MainViewModel(
     init {
         loadUsers()
         loadCurrentHost()
+
     }
 
     fun addUser(name: String, callback: (Boolean) -> Unit) {
