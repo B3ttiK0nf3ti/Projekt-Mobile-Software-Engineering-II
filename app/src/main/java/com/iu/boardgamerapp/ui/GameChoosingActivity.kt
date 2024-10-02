@@ -5,38 +5,69 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class GameChoosingActivity : ComponentActivity() {
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var appDatabaseHelper: AppDatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         firestore = FirebaseFirestore.getInstance()
+        appDatabaseHelper =
+            AppDatabaseHelper(this) // Or however you initialize your AppDatabaseHelper
 
         setContent {
             BoardGamerAppTheme {
                 GameChoosingScreen(
                     firestore = firestore,
+                    appDatabaseHelper = appDatabaseHelper,
                     onBackPressed = { finish() }
                 )
             }
@@ -47,89 +78,96 @@ class GameChoosingActivity : ComponentActivity() {
 data class Game(
     val game: String = "",
     val votes: Int = 0,
-    val documentId: String = "", // Dokument-ID hinzufügen
+    val documentId: String = "",
+    val votedUsers: List<String> = listOf()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) {
+fun GameChoosingScreen(
+    firestore: FirebaseFirestore,
+    appDatabaseHelper: AppDatabaseHelper,
+    onBackPressed: () -> Unit
+) {
     var searchQuery by remember { mutableStateOf("") }
     var newGame by remember { mutableStateOf("") }
     var games by remember { mutableStateOf(listOf<Game>()) }
+    var currentUserId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val gamesCollection = firestore.collection("games")
-        gamesCollection.addSnapshotListener { snapshot, e ->
-            if (e != null) return@addSnapshotListener
-            if (snapshot != null) {
-                val gameList = snapshot.documents.mapNotNull { doc ->
-                    val gameName = doc.getString("game") // Den Spielnamen abrufen
-                    val votesCount = doc.getLong("votes")?.toInt() ?: 0 // Die Stimmenanzahl abrufen
-                    val documentId = doc.id // Dokument-ID abrufen
-                    gameName?.let { Game(documentId = documentId, game = it, votes = votesCount) } // Game-Objekt erstellen
-                }
-                // Spiele nach Votes sortieren (absteigend)
-                games = gameList.sortedByDescending { it.votes }
-            }
+        currentUserId = getCurrentUserId(appDatabaseHelper)
+        loadGames(firestore) { loadedGames ->
+            games = loadedGames
         }
     }
 
-    val filteredGames = games.filter { it.game.contains(searchQuery, ignoreCase = true) }
-
     Surface(
-        color = Color(0xFFE0E0E0), // Grauer Hintergrund
+        color = Color(0xFFE0E0E0),
         modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 16.dp) // Abstand zum unteren Rand hinzufügen
+                .padding(bottom = 16.dp)
         ) {
-            // Obere Leiste mit Zurück-Pfeil und Titel
+            // Top bar with back arrow, title, and reset button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White) // Weißer Hintergrund
+                    .background(Color.White)
                     .padding(8.dp)
                     .height(60.dp)
             ) {
                 IconButton(onClick = onBackPressed) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Zurück",
+                        contentDescription = "Back",
                         tint = Color.Gray
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .weight(1f)
                 ) {
                     Text(
-                        text = "Spielauswahl",
+                        text = "Game Selection",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF318DFF),
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                Spacer(modifier = Modifier.width(48.dp)) // Abstand zum Rand
+                IconButton(
+                    onClick = {
+                        resetAllVotes(firestore) {
+                            loadGames(firestore) { loadedGames ->
+                                games = loadedGames
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reset Votes",
+                        tint = Color(0xFF318DFF)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Suchzeile mit weißem Hintergrund
+            // Search bar with white background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp) // Abstand zu den Seiten
+                    .padding(horizontal = 16.dp)
                     .background(Color.White, shape = RoundedCornerShape(8.dp))
             ) {
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Spiel suchen...") },
+                    placeholder = { Text("Search for a game...") },
                     colors = TextFieldDefaults.textFieldColors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -141,21 +179,30 @@ fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) 
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Spieleliste anzeigen
+            // Game list
+            val filteredGames = games.filter { it.game.contains(searchQuery, ignoreCase = true) }
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 16.dp) // Abstand links und rechts einfügen
+                    .padding(horizontal = 16.dp)
             ) {
                 items(filteredGames) { game ->
-                    GameItem(game = game, firestore = firestore)
+                    GameItem(
+                        game = game,
+                        firestore = firestore,
+                        currentUserId = currentUserId,
+                        onVote = { votedGame ->
+                            games =
+                                games.map { if (it.documentId == votedGame.documentId) votedGame else it }
+                        }
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Eingabefeld und Button zum Hinzufügen neuer Spiele mit weißem Hintergrund
+            // Input field and button to add new games with white background
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -169,8 +216,8 @@ fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) 
                 ) {
                     TextField(
                         value = newGame,
-                        onValueChange = { newGame = it }, // Keine Trim-Anwendung hier
-                        placeholder = { Text("Neues Spiel eingeben") },
+                        onValueChange = { newGame = it },
+                        placeholder = { Text("Enter a new game") },
                         colors = TextFieldDefaults.textFieldColors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
@@ -182,12 +229,12 @@ fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) 
 
                 IconButton(
                     onClick = {
-                        val trimmedGame = newGame.trimEnd() // Trimmen nur am Ende
-                        if (trimmedGame.isNotEmpty()) { // Überprüfen, ob der Spielname nicht leer ist
+                        val trimmedGame = newGame.trimEnd()
+                        if (trimmedGame.isNotEmpty()) {
                             val newGameObj = Game(game = trimmedGame, votes = 0)
                             firestore.collection("games")
                                 .add(newGameObj)
-                                .addOnSuccessListener { newGame = "" } // Eingabefeld zurücksetzen
+                                .addOnSuccessListener { newGame = "" }
                         }
                     },
                     modifier = Modifier
@@ -196,7 +243,7 @@ fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) 
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
-                        contentDescription = "Hinzufügen",
+                        contentDescription = "Add",
                         tint = Color(0xFF318DFF),
                         modifier = Modifier.size(32.dp)
                     )
@@ -207,9 +254,16 @@ fun GameChoosingScreen(firestore: FirebaseFirestore, onBackPressed: () -> Unit) 
 }
 
 @Composable
-fun GameItem(game: Game, firestore: FirebaseFirestore) {
+fun GameItem(
+    game: Game,
+    firestore: FirebaseFirestore,
+    currentUserId: String?,
+    onVote: (Game) -> Unit
+) {
     var offsetX by remember { mutableStateOf(0f) }
+    var isDeleting by remember { mutableStateOf(false) } // Flag to track deletion state
     val gameDocument = firestore.collection("games").document(game.documentId)
+    val hasVoted = currentUserId != null && game.votedUsers.contains(currentUserId)
 
     Box(
         modifier = Modifier
@@ -220,18 +274,35 @@ fun GameItem(game: Game, firestore: FirebaseFirestore) {
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable {
-                if (offsetX >= 0) {
-                    // Stimmenanzahl erhöhen, wenn nicht gelöscht
-                    gameDocument.update("votes", game.votes + 1)
+                if (offsetX >= 0 && !hasVoted && currentUserId != null) {
+                    voteForGame(gameDocument, currentUserId, game) { updatedGame ->
+                        onVote(updatedGame)
+                    }
                 }
             }
             .pointerInput(Unit) {
-                detectHorizontalDragGestures { change, dragAmount ->
-                    if (dragAmount < 0) { // Nur nach links wischen
-                        offsetX += dragAmount
+                detectHorizontalDragGestures(
+                    onDragStart = { /* Reset deletion state when drag starts */
+                        isDeleting = false
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        if (dragAmount < 0 && !isDeleting) { // Allow dragging left only when not deleting
+                            offsetX += dragAmount
+                        }
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        // Only allow deletion if dragged a sufficient distance and not already deleting
+                        if (offsetX < -150 && !isDeleting) {
+                            isDeleting = true // Set flag to prevent multiple deletions
+                            gameDocument.delete()
+                            offsetX = 0f
+                        } else {
+                            // Reset swipe position if not enough distance covered
+                            offsetX = 0f
+                        }
                     }
-                    change.consume()
-                }
+                )
             }
             .padding(16.dp)
     ) {
@@ -253,14 +324,83 @@ fun GameItem(game: Game, firestore: FirebaseFirestore) {
                 color = Color.White,
                 modifier = Modifier.padding(end = 8.dp)
             )
+
+            if (hasVoted) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Voted",
+                    tint = Color.White
+                )
+            }
         }
     }
+}
 
-    // Löschen, wenn der Benutzer den gesamten Bereich nach links geschoben hat
-    LaunchedEffect(offsetX) {
-        if (offsetX < -200) { // Wenn mehr als 200 dp nach links geschoben wird
-            gameDocument.delete() // Dokument aus Firestore löschen
-            offsetX = 0f // Offset zurücksetzen
+suspend fun getCurrentUserId(appDatabaseHelper: AppDatabaseHelper): String? {
+    return suspendCoroutine { continuation ->
+        appDatabaseHelper.getUserWithFirebaseID { userId ->
+            continuation.resume(userId)
+        }
+    }
+}
+
+fun loadGames(firestore: FirebaseFirestore, onGamesLoaded: (List<Game>) -> Unit) {
+    firestore.collection("games").addSnapshotListener { snapshot, e ->
+        if (e != null) return@addSnapshotListener
+        if (snapshot != null) {
+            val gameList = snapshot.documents.mapNotNull { doc ->
+                val gameName = doc.getString("game")
+                val votesCount = doc.getLong("votes")?.toInt() ?: 0
+                val documentId = doc.id
+                val votedUsers = doc.get("votedUsers") as? List<String> ?: listOf()
+                gameName?.let {
+                    Game(
+                        documentId = documentId,
+                        game = it,
+                        votes = votesCount,
+                        votedUsers = votedUsers
+                    )
+                }
+            }
+            onGamesLoaded(gameList.sortedByDescending { it.votes })
+        }
+    }
+}
+
+fun voteForGame(
+    gameDocument: DocumentReference,
+    userId: String,
+    game: Game,
+    onVoteComplete: (Game) -> Unit
+) {
+    gameDocument.update(
+        mapOf(
+            "votes" to FieldValue.increment(1),
+            "votedUsers" to FieldValue.arrayUnion(userId)
+        )
+    ).addOnSuccessListener {
+        val updatedGame = game.copy(
+            votes = game.votes + 1,
+            votedUsers = game.votedUsers + userId
+        )
+        onVoteComplete(updatedGame)
+    }
+}
+
+fun resetAllVotes(firestore: FirebaseFirestore, onComplete: () -> Unit) {
+    firestore.collection("games").get().addOnSuccessListener { snapshot ->
+        val batch = firestore.batch()
+        for (document in snapshot.documents) {
+            val docRef = firestore.collection("games").document(document.id)
+            batch.update(
+                docRef, mapOf(
+                    "votes" to 0,
+                    "votedUsers" to listOf<String>()
+                )
+            )
+        }
+        batch.commit().addOnCompleteListener {
+            onComplete()
         }
     }
 }

@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.ui.test.android) // Beispiel für Activity Compose
     implementation("com.google.firebase:firebase-firestore:24.0.0")
+    implementation(libs.androidx.foundation.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
