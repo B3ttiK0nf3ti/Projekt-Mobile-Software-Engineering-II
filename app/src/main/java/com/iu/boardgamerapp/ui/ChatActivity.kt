@@ -60,10 +60,8 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
     var chatMessages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var newMessage by remember { mutableStateOf("") }
 
-    // LazyListState für LazyColumn
     val listState = rememberLazyListState()
 
-    // Firestore Listener
     LaunchedEffect(Unit) {
         val firestore = FirebaseFirestore.getInstance()
         firestore.collection("messages")
@@ -72,10 +70,13 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    // Nachrichten nach Timestamp sortieren
                     val messages = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(ChatMessage::class.java)
-                    }.sortedBy { it.timestamp } // Sicherstellen, dass die Sortierung nach Timestamp erfolgt
+                    }.sortedBy { chatMessage ->
+                        // Wandelt den String-Timestamp in ein Date-Objekt um
+                        val dateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault())
+                        dateFormat.parse(chatMessage.timestamp)
+                    }
                     chatMessages = messages
                 }
             }
@@ -201,6 +202,7 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
         }
     }
 }
+
 
 @Composable
 fun ChatBubble(message: ChatMessage, isOwnMessage: Boolean) {
