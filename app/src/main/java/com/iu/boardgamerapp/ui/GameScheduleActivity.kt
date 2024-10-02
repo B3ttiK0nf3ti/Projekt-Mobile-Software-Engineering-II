@@ -80,10 +80,13 @@ class GameScheduleActivity : ComponentActivity() {
             var isRefreshing by remember { mutableStateOf(false) }
             val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
             val coroutineScope = rememberCoroutineScope()
-            var selectedDateStart by remember { mutableStateOf(Calendar.getInstance()) }
-            var selectedDateEnd by remember {
+            var selectedDateStart by remember {
                 mutableStateOf(
                     Calendar.getInstance().apply { add(Calendar.HOUR, 2) })
+            }
+            var selectedDateEnd by remember {
+                mutableStateOf(
+                    Calendar.getInstance().apply { add(Calendar.HOUR, 4) })
             }
 
             var isLoading by remember { mutableStateOf(true) }
@@ -114,23 +117,36 @@ class GameScheduleActivity : ComponentActivity() {
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        IconButton(
-                            onClick = { finish() },
-                            modifier = Modifier.align(Alignment.Start)
+                        // Row für Zurück-Button und Titel
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.back),
-                                tint = Color.Gray
+                            // Zurück-Button
+                            IconButton(
+                                onClick = { finish() } // Zurück zur vorherigen Aktivität
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Zurück",
+                                    tint = Color.Gray
+                                )
+                            }
+
+                            // Titel des Spielplans
+                            Text(
+                                text = stringResource(R.string.schedule_title), // Setzen Sie hier Ihren Titel ein
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF318DFF),
+                                modifier = Modifier
+                                    .padding(start = 16.dp) // Abstand zwischen dem Button und dem Titel
+                                    .align(Alignment.CenterVertically) // Zentriert vertikal
                             )
                         }
-
-                        Text(
-                            text = stringResource(R.string.schedule_title),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF318DFF)
-                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -175,10 +191,37 @@ class GameScheduleActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Buttons to pick start and end date/time
-                        DatePickerButton(selectedDateStart) { selectedDateStart = it }
-                        DatePickerButton(selectedDateEnd) { selectedDateEnd = it }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Startdatum Button
+                            DatePickerButton(selectedDateStart, "Startdatum") { newStartDate ->
+                                val now = Calendar.getInstance()
+                                if (newStartDate.before(now)) {
+                                    Toast.makeText(this@GameScheduleActivity, "Das Startdatum muss in der Zukunft liegen.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    selectedDateStart = newStartDate
+                                    selectedDateEnd = Calendar.getInstance().apply {
+                                        timeInMillis = selectedDateStart.timeInMillis
+                                        add(Calendar.HOUR, 2)
+                                    }
+                                }
+                            }
 
-                        Spacer(modifier = Modifier.height(48.dp))
+                            Spacer(modifier = Modifier.width(16.dp)) // Abstand zwischen den Buttons
+
+                            // Enddatum Button
+                            DatePickerButton(selectedDateEnd, "Enddatum") { newEndDate ->
+                                if (newEndDate.after(selectedDateStart)) {
+                                    selectedDateEnd = newEndDate
+                                } else {
+                                    Toast.makeText(this@GameScheduleActivity, "Das Enddatum muss nach dem Startdatum liegen.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
                             onClick = {
@@ -221,37 +264,31 @@ class GameScheduleActivity : ComponentActivity() {
     }
 
     @Composable
-    fun DatePickerButton(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
+    fun DatePickerButton(selectedDate: Calendar, label: String, onDateSelected: (Calendar) -> Unit) {
         val context = LocalContext.current
         val openDialog = remember { mutableStateOf(false) }
 
-        // Zeige den Dialog an, wenn openDialog.value true ist
         if (openDialog.value) {
-            // Initialisiere den Dialog außerhalb von LaunchedEffect
             val datePickerDialog = remember {
                 DatePickerDialog(
                     context,
                     { _, year, month, dayOfMonth ->
-                        // Setze das Datum im Calendar-Objekt
                         selectedDate.set(year, month, dayOfMonth)
 
-                        // Erstelle den TimePickerDialog
                         val timePickerDialog = TimePickerDialog(
                             context,
                             { _, hourOfDay, minute ->
-                                // Setze die Uhrzeit im Calendar-Objekt
                                 selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
                                 selectedDate.set(Calendar.MINUTE, minute)
 
-                                // Rufe die onDateSelected Callback-Funktion auf
                                 onDateSelected(selectedDate)
-                                openDialog.value = false // Schließen des Dialogs nach Auswahl
+                                openDialog.value = false
                             },
                             selectedDate.get(Calendar.HOUR_OF_DAY),
                             selectedDate.get(Calendar.MINUTE),
-                            true // 24-Stunden-Format
+                            true
                         )
-                        timePickerDialog.show() // Zeige den TimePickerDialog an
+                        timePickerDialog.show()
                     },
                     selectedDate.get(Calendar.YEAR),
                     selectedDate.get(Calendar.MONTH),
@@ -262,30 +299,31 @@ class GameScheduleActivity : ComponentActivity() {
             DisposableEffect(Unit) {
                 datePickerDialog.show()
                 onDispose {
-                    openDialog.value =
-                        false // Schließe den Dialog, wenn der Composable entfernt wird
+                    openDialog.value = false
                 }
             }
         }
 
-        Button(
-            onClick = { openDialog.value = true },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
-            modifier = Modifier
-                .wrapContentWidth()
-                .padding(8.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(bottom = 16.dp) // Abstand unten
         ) {
-            Text(
-                text = if (selectedDate.timeInMillis == Calendar.getInstance().timeInMillis) {
-                    "Startdatum und -uhrzeit wählen"
-                } else {
-                    SimpleDateFormat(
-                        "dd.MM.yyyy HH:mm",
-                        Locale.getDefault()
-                    ).format(selectedDate.time)
-
-                }
-            )
+            Text(text = label, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+            Button(
+                onClick = { openDialog.value = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = if (selectedDate.timeInMillis <= Calendar.getInstance().timeInMillis) {
+                        "Datum und Uhrzeit wählen"
+                    } else {
+                        SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(selectedDate.time)
+                    }
+                )
+            }
         }
     }
 
