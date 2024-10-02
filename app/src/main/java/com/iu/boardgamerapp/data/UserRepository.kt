@@ -45,21 +45,6 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
         }
     }
 
-    // Benutzer abrufen
-    fun getUser(onComplete: (String?) -> Unit) {
-        db.collection(USERS_COLLECTION).limit(1).get()
-            .addOnSuccessListener { result ->
-                for (document in result) {
-                    onComplete(document.getString("name"))
-                }
-                onComplete(null) // Rückgabe von null, wenn kein Benutzer vorhanden ist
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Fehler beim Abrufen des Benutzers", e)
-                onComplete(null)
-            }
-    }
-
     fun getUserByName(name: String, callback: (User?) -> Unit) {
         db.collection(USERS_COLLECTION)
             .whereEqualTo("name", name)
@@ -68,7 +53,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             .addOnSuccessListener { result ->
                 if (!result.isEmpty) {
                     val document = result.documents[0]
-                    val userId = document.id.toIntOrNull() ?: 0 // Konvertiere die ID in einen Integer
+                    val userId = document.id // Verwende die ID als String
                     val userName = document.getString("name") ?: ""
                     val isHost = document.getBoolean("isHost") ?: false
                     callback(User(userId, userName, isHost)) // Benutzer mit ID zurückgeben
@@ -82,14 +67,16 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
     }
 
+
     // Alle Benutzer abrufen
     fun getAllUsers(callback: (List<User>) -> Unit) {
         db.collection(USERS_COLLECTION).get()
             .addOnSuccessListener { result ->
-                val users = result.map { document ->
-                    val userId = document.id.toIntOrNull() ?: 0 // Konvertiere die ID in einen Integer
+                val users = result.mapNotNull { document ->
+                    val userId = document.id // Verwende die ID als String
                     val userName = document.getString("name") ?: ""
                     val isHost = document.getBoolean("isHost") ?: false
+
                     User(userId, userName, isHost) // Benutzer-Objekt erstellen
                 }
                 callback(users)
@@ -105,36 +92,25 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
         Log.d(TAG, "Wechsle Gastgeber zu: $newHostName") // Debugging-Log
 
         getAllUsers { users ->
-            // Finde den neuen Gastgeber
             val newHost = users.find { it.name == newHostName }
 
             if (newHost != null) {
-                // Finde den aktuellen Gastgeber
                 val currentHost = users.find { it.isHost }
 
-                // Deaktiviere den aktuellen Gastgeber
                 currentHost?.let { host ->
-                    val currentHostRef =
-                        db.collection(USERS_COLLECTION).document(host.id.toString())
+                    val currentHostRef = db.collection(USERS_COLLECTION).document(host.firebaseInstallationId)
                     currentHostRef.update("isHost", false)
                         .addOnSuccessListener {
-                            Log.d(
-                                TAG,
-                                "Aktueller Gastgeber ${host.name} wurde erfolgreich deaktiviert."
-                            )
+                            Log.d(TAG, "Aktueller Gastgeber ${host.name} wurde erfolgreich deaktiviert.")
                         }
                         .addOnFailureListener { e ->
-                            Log.w(
-                                TAG,
-                                "Fehler beim Deaktivieren des aktuellen Gastgebers: ${e.message}"
-                            )
+                            Log.w(TAG, "Fehler beim Deaktivieren des aktuellen Gastgebers: ${e.message}")
                         }
                 } ?: run {
                     Log.d(TAG, "Kein aktueller Gastgeber gefunden, keine Änderung notwendig.")
                 }
 
-                // Aktiviere den neuen Gastgeber
-                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.id.toString())
+                val newHostRef = db.collection(USERS_COLLECTION).document(newHost.firebaseInstallationId)
                 newHostRef.update("isHost", true)
                     .addOnSuccessListener {
                         Log.d(TAG, "Neuer Gastgeber gesetzt: ${newHost.name}")
@@ -148,6 +124,7 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
             }
         }
     }
+
 
 
     // Methode, um den aktuellen Gastgeber aus der Firestore-Datenbank zu laden
