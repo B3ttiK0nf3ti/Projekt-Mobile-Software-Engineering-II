@@ -113,17 +113,17 @@ class GameScheduleActivity : ComponentActivity() {
                 ) {
                     Column(
                         modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxSize(),
+                            .fillMaxSize() // Nimmt den gesamten verfügbaren Platz ein
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Row für Zurück-Button und Titel
                         Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
+                                .height(60.dp) // Height of the header
+                                .background(Color.White) // White background
                         ) {
                             // Zurück-Button
                             IconButton(
@@ -136,6 +136,9 @@ class GameScheduleActivity : ComponentActivity() {
                                 )
                             }
 
+                            // Spacer für die Anpassung der Position
+                            Spacer(modifier = Modifier.weight(1f)) // Nimmt den restlichen Platz ein
+
                             // Titel des Spielplans
                             Text(
                                 text = stringResource(R.string.schedule_title), // Setzen Sie hier Ihren Titel ein
@@ -143,7 +146,7 @@ class GameScheduleActivity : ComponentActivity() {
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF318DFF),
                                 modifier = Modifier
-                                    .padding(start = 16.dp) // Abstand zwischen dem Button und dem Titel
+                                    .padding(start = 16.dp, end = 16.dp) // Abstand um den Titel
                                     .align(Alignment.CenterVertically) // Zentriert vertikal
                             )
                         }
