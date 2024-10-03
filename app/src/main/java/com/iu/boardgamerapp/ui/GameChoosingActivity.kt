@@ -140,16 +140,18 @@ fun GameChoosingScreen(
                 }
                 IconButton(
                     onClick = {
-                        resetAllVotes(firestore) {
-                            loadGames(firestore) { loadedGames ->
-                                games = loadedGames
+                        currentUserId?.let { userId ->
+                            resetUserVotes(firestore, userId) {
+                                loadGames(firestore) { loadedGames ->
+                                    games = loadedGames
+                                }
                             }
                         }
                     }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reset Votes",
+                        contentDescription = "Reset My Votes",
                         tint = Color(0xFF318DFF)
                     )
                 }
@@ -192,8 +194,7 @@ fun GameChoosingScreen(
                         firestore = firestore,
                         currentUserId = currentUserId,
                         onVote = { votedGame ->
-                            games =
-                                games.map { if (it.documentId == votedGame.documentId) votedGame else it }
+                            games = games.map { if (it.documentId == votedGame.documentId) votedGame else it }
                         }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -387,20 +388,18 @@ fun voteForGame(
     }
 }
 
-fun resetAllVotes(firestore: FirebaseFirestore, onComplete: () -> Unit) {
-    firestore.collection("games").get().addOnSuccessListener { snapshot ->
-        val batch = firestore.batch()
-        for (document in snapshot.documents) {
-            val docRef = firestore.collection("games").document(document.id)
-            batch.update(
-                docRef, mapOf(
-                    "votes" to 0,
-                    "votedUsers" to listOf<String>()
-                )
-            )
+fun resetUserVotes(firestore: FirebaseFirestore, userId: String, onComplete: () -> Unit) {
+    firestore.collection("games").whereArrayContains("votedUsers", userId)
+        .get()
+        .addOnSuccessListener { snapshot ->
+            val batch = firestore.batch()
+            for (document in snapshot.documents) {
+                val docRef = firestore.collection("games").document(document.id)
+                batch.update(docRef, "votes", FieldValue.increment(-1))
+                batch.update(docRef, "votedUsers", FieldValue.arrayRemove(userId))
+            }
+            batch.commit().addOnCompleteListener {
+                onComplete()
+            }
         }
-        batch.commit().addOnCompleteListener {
-            onComplete()
-        }
-    }
 }

@@ -203,7 +203,6 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
     }
 }
 
-
 @Composable
 fun ChatBubble(message: ChatMessage, isOwnMessage: Boolean) {
     val backgroundColor = if (isOwnMessage) Color(0xFF318DFF) else Color.White
