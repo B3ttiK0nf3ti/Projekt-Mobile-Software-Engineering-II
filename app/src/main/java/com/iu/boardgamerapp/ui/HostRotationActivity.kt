@@ -74,63 +74,92 @@ class HostRotationActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFFE0E0E0) // Hellgrauer Hintergrund
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // TopAppBar im gleichen Stil wie GameScheduleActivity
-                CenterAlignedTopAppBar(
-                    title = { Text("Gastgeberwechsel", fontWeight = FontWeight.Bold, color = Color.White) },
-                    navigationIcon = {
-                        IconButton(onClick = { finish() }) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück", tint = Color.White)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF318DFF)) // Gleiche blaue Farbe verwenden
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Aktuellen Gastgeber anzeigen
-                Text(
-                    text = "Aktueller Gastgeber: $currentHost", // Zeigt den aktuellen Gastgeber an
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Benutzerliste in einer LazyColumn anzeigen
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(8.dp)
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(userList.size) { index ->
-                        val user = userList[index]
-                        UserItem(user) { selectedUser ->
-                            // Gastgeber wechseln und zur Startseite zurückkehren
-                            viewModel.changeHost(selectedUser.name) {
-                                // Callback, um den Hostwechsel zu bestätigen
-                                setResult(Activity.RESULT_OK) // Setze das Ergebnis
-                                finish()  // Schließt die Activity
-                            }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .background(Color.White)
+                    ) {
+                        IconButton(
+                            onClick = { finish() },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "Zurück",
+                                tint = Color.Gray
+                            )
                         }
-                        Spacer(modifier = Modifier.height(16.dp)) // Fügt Platz zwischen den Benutzer-Items hinzu
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            // Display the current host
+                            Text(
+                                text = "Gastgeberwechsel", // Setzen Sie hier Ihren Titel ein
+                                fontSize = 18.sp, // Angepasste Schriftgröße
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF318DFF), // Angepasste Farbe
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(48.dp))
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Aktuellen Gastgeber anzeigen
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp), // Padding auf beiden Seiten
+                        contentAlignment = Alignment.Center // Zentriert den Inhalt
+                    ) {
+                        Text(
+                            text = "Aktueller Gastgeber: $currentHost", // Zeigt den aktuellen Gastgeber an
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Benutzerliste in einer LazyColumn anzeigen
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        items(userList.size) { index ->
+                            val user = userList[index]
+                            UserItem(user) { selectedUser ->
+                                // Gastgeber wechseln und zur Startseite zurückkehren
+                                viewModel.changeHost(selectedUser.name) {
+                                    // Callback, um den Hostwechsel zu bestätigen
+                                    setResult(Activity.RESULT_OK) // Setze das Ergebnis
+                                    finish()  // Schließt die Activity
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp)) // Fügt Platz zwischen den Benutzer-Items hinzu
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
-                    }
 
 
-
-            }
+        }
 
     }
 
@@ -152,3 +181,4 @@ class HostRotationActivity : ComponentActivity() {
         }
     }
 
+}
