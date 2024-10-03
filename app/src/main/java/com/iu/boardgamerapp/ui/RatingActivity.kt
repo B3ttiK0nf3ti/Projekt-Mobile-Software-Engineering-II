@@ -6,7 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 data class Rating(
     val hostName: String = "",  // Name des Gastgebers
@@ -69,115 +72,184 @@ class RatingActivity : ComponentActivity() {
         var foodRating by remember { mutableStateOf(0f) }
         var eveningRating by remember { mutableStateOf(0f) }
 
+        var averageHostRating by remember { mutableStateOf(0f) }
+        var averageFoodRating by remember { mutableStateOf(0f) }
+        var averageEveningRating by remember { mutableStateOf(0f) }
+
+        // Bewertungen abrufen, wenn der Screen geladen wird
+        LaunchedEffect(Unit) {
+            val averages = fetchAverageRatings(currentHost)
+            averageHostRating = averages[0]
+            averageFoodRating = averages[1]
+            averageEveningRating = averages[2]
+        }
+
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFE0E0E0) // Gleiche hellgraue Hintergrundfarbe
+            color = Color(0xFFE0E0E0)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // TopAppBar im Stil der HostRotationActivity
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "Bewertungen",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { /* Aktion, um zurückzugehen */ }) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .background(Color.White)
+                    ) {
+                        IconButton(
+                            onClick = { finish() },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
                             Icon(
-                                Icons.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Zurück",
-                                tint = Color.White
+                                tint = Color.Gray
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(
-                            0xFF318DFF
-                        )
-                    ) // Blaue Farbe
-                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            // Zeige den aktuellen Gastgeber an
+                            Text(
+                                text = "Bewerte den Gastgeber: $currentHost",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = Color(0xFF318DFF),
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
 
-                // Zeige den aktuellen Gastgeber an
-                Text(
-                    text = "Bewerte den Gastgeber: $currentHost",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black
-                )
+                        Spacer(modifier = Modifier.width(48.dp))
+                    }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    // Bewertung für den Gastgeber
+                    // LazyColumn für scrollbare Slider
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)  // Horizontaler Abstand für die Slider
+                    ) {
+                        item {
+                            // Bewertung für den Gastgeber
+                            Spacer(modifier = Modifier.height(24.dp))
+                            RatingSlider("Bewerte den Gastgeber", hostRating) { hostRating = it }
 
-                // Bewertung für den Gastgeber
-                Text("Bewerte den Gastgeber")
-                Slider(
-                    value = hostRating,
-                    onValueChange = { hostRating = it },
-                    valueRange = 0f..5f,
-                    steps = 4,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
-                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
-                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
-                    )
-                )
-                Text("Gastgeber Bewertung: ${hostRating.toInt()}")
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                            // Bewertung für das Essen
+                            RatingSlider("Bewerte das Essen", foodRating) { foodRating = it }
 
-                // Bewertung für das Essen
-                Text("Bewerte das Essen")
-                Slider(
-                    value = foodRating,
-                    onValueChange = { foodRating = it },
-                    valueRange = 0f..5f,
-                    steps = 4,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
-                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
-                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
-                    )
-                )
-                Text("Essen Bewertung: ${foodRating.toInt()}")
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                            // Bewertung für den Abend
+                            RatingSlider("Bewerte den Abend", eveningRating) { eveningRating = it }
 
-                // Bewertung für den Abend
-                Text("Bewerte den Abend")
-                Slider(
-                    value = eveningRating,
-                    onValueChange = { eveningRating = it },
-                    valueRange = 0f..5f,
-                    steps = 4,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF318DFF), // Farbe des Daumens
-                        activeTrackColor = Color(0xFF318DFF), // Farbe des aktiven Tracks
-                        inactiveTrackColor = Color.Gray // Farbe des inaktiven Tracks
-                    )
-                )
-                Text("Abend Bewertung: ${eveningRating.toInt()}")
+                            Spacer(modifier = Modifier.height(48.dp))
 
-                Spacer(modifier = Modifier.height(32.dp))
+                            // Durchschnittsbewertungen anzeigen
+                            Text(
+                                "Durchschnittliche Bewertungen:",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF318DFF)  // Gleiche Farbe wie die Überschrift
+                            )
+                            Text(
+                                "Gastgeber: ${"%.2f".format(averageHostRating)}",
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Essen: ${"%.2f".format(averageFoodRating)}",
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Abend: ${"%.2f".format(averageEveningRating)}",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                // Button zum Absenden der Bewertungen
-                Button(
-                    onClick = {
-                        // Rufe die Callback-Funktion auf, um die Bewertungen zu übergeben
-                        onSubmit(hostRating.toInt(), foodRating.toInt(), eveningRating.toInt())
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)) // Blaue Schaltfläche
-                ) {
-                    Text("Bewertung abschicken", color = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+
+                    ) {
+                        Button(
+                            onClick = {
+                                onSubmit(
+                                    hostRating.toInt(),
+                                    foodRating.toInt(),
+                                    eveningRating.toInt()
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),  // Button über die gesamte Breite
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF))
+                        ) {
+                            Text("Bewertung abschicken", color = Color.White)
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    // Funktion zum Abrufen der durchschnittlichen Bewertungen
+    private suspend fun fetchAverageRatings(hostName: String): List<Float> {
+        val ratingsSnapshot = db.collection("ratings")
+            .whereEqualTo("hostName", hostName)
+            .get()
+            .await()
+
+        var totalHostRating = 0f
+        var totalFoodRating = 0f
+        var totalEveningRating = 0f
+        val count = ratingsSnapshot.size()
+
+        for (document in ratingsSnapshot) {
+            val rating = document.toObject(Rating::class.java)
+            totalHostRating += rating.hostRating
+            totalFoodRating += rating.foodRating
+            totalEveningRating += rating.eveningRating
+        }
+
+        return if (count > 0) {
+            listOf(
+                totalHostRating / count,
+                totalFoodRating / count,
+                totalEveningRating / count
+            )
+        } else {
+            listOf(0f, 0f, 0f) // Keine Bewertungen vorhanden
+        }
+    }
+
+
+    @Composable
+    private fun RatingSlider(label: String, rating: Float, onRatingChanged: (Float) -> Unit) {
+        Column {
+            Text(
+                text = label,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF318DFF)  // Gleiche Farbe wie die Gesamtüberschrift
+            )
+            Slider(
+                value = rating,
+                onValueChange = { onRatingChanged(it) },
+                valueRange = 0f..5f,
+                steps = 4,
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFF318DFF),
+                    activeTrackColor = Color(0xFF318DFF),
+                    inactiveTrackColor = Color.Gray
+                ),
+                modifier = Modifier.padding(horizontal = 16.dp)  // Slider Padding vom Rand
+            )
         }
     }
 }
