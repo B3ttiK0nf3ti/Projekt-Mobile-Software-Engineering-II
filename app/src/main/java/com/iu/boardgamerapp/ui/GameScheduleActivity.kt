@@ -51,6 +51,7 @@ import java.util.*
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.shadow
 
 class GameScheduleActivity : ComponentActivity() {
 
@@ -101,33 +102,20 @@ class GameScheduleActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = Color(0xFFE0E0E0)
             ) {
-                SwipeRefresh(
-                    state = swipeRefreshState,
-                    onRefresh = {
-                        isRefreshing = true
-                        coroutineScope.launch(Dispatchers.IO) {
-                            fetchCalendarEvents(calendarEvents)
-                            isRefreshing = false
-                        }
-                    }
-                ) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize() // Nimmt den gesamten verfügbaren Platz ein
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        // Row für Zurück-Button und Titel
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(60.dp) // Height of the header
-                                .background(Color.White) // White background
+                                .height(60.dp)
+                                .background(Color.White)
                         ) {
-                            // Zurück-Button
                             IconButton(
-                                onClick = { finish() } // Zurück zur vorherigen Aktivität
+                                onClick = { finish() },
+                                modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -136,28 +124,33 @@ class GameScheduleActivity : ComponentActivity() {
                                 )
                             }
 
-                            // Spacer für die Anpassung der Position
-                            Spacer(modifier = Modifier.weight(1f)) // Nimmt den restlichen Platz ein
-
-                            // Titel des Spielplans
-                            Text(
-                                text = stringResource(R.string.schedule_title), // Setzen Sie hier Ihren Titel ein
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF318DFF),
+                            Box(
                                 modifier = Modifier
-                                    .padding(start = 16.dp, end = 16.dp) // Abstand um den Titel
-                                    .align(Alignment.CenterVertically) // Zentriert vertikal
-                            )
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            ) {
+                                // Display the current host
+                                Text(
+                                    text = stringResource(R.string.schedule_title), // Setzen Sie hier Ihren Titel ein
+                                    fontSize = 18.sp, // Angepasste Schriftgröße
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF318DFF), // Angepasste Farbe
+                                    modifier = Modifier.align(Alignment.Center)
+
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(48.dp))
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+
 
                         LazyColumn(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(8.dp)
+                                .padding(16.dp)
                         ) {
                             items(calendarEvents.size) { index ->
                                 val event = calendarEvents[index]
@@ -179,7 +172,9 @@ class GameScheduleActivity : ComponentActivity() {
                             value = title,
                             onValueChange = { title = it },
                             label = { Text("Ereignistitel") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -188,14 +183,18 @@ class GameScheduleActivity : ComponentActivity() {
                             value = location,
                             onValueChange = { location = it },
                             label = { Text(stringResource(R.string.event_location)) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Buttons to pick start and end date/time
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             // Startdatum Button
@@ -229,26 +228,19 @@ class GameScheduleActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 val newEvent = CalendarEvent(
-                                    id = "", // Initially empty; will be set in saveEventToFirestore
+                                    id = "",
                                     title = title,
                                     location = location,
                                     startTime = Timestamp(selectedDateStart.time),
                                     endTime = Timestamp(selectedDateEnd.time)
                                 )
 
-                                addEventToCalendar(newEvent) // Save the event to the calendar
+                                addEventToCalendar(newEvent)
 
-                                // Save the event to Firestore
                                 saveEventToFirestore(newEvent, calendarEvents) { eventId ->
-                                    Log.d(
-                                        "GameScheduleActivity",
-                                        getString(R.string.event_successfully_added, eventId)
-                                    )
                                     newEvent.id = eventId
                                     calendarEvents.add(newEvent)
-                                    fetchCalendarEvents(calendarEvents) // Refresh calendar events
 
-                                    // Eingabefelder zurücksetzen
                                     title = ""
                                     location = ""
                                 }
@@ -256,7 +248,7 @@ class GameScheduleActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp)
+                                .padding(horizontal = 16.dp),
                         ) {
                             Text(text = stringResource(R.string.add_event), color = Color.White)
                         }
