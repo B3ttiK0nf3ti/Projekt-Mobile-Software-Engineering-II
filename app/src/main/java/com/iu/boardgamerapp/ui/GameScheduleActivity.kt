@@ -51,7 +51,6 @@ import java.util.*
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
-import androidx.compose.ui.draw.shadow
 
 class GameScheduleActivity : ComponentActivity() {
 
@@ -81,13 +80,10 @@ class GameScheduleActivity : ComponentActivity() {
             var isRefreshing by remember { mutableStateOf(false) }
             val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
             val coroutineScope = rememberCoroutineScope()
-            var selectedDateStart by remember {
-                mutableStateOf(
-                    Calendar.getInstance().apply { add(Calendar.HOUR, 2) })
-            }
+            var selectedDateStart by remember { mutableStateOf(Calendar.getInstance()) }
             var selectedDateEnd by remember {
                 mutableStateOf(
-                    Calendar.getInstance().apply { add(Calendar.HOUR, 4) })
+                    Calendar.getInstance().apply { add(Calendar.HOUR, 2) })
             }
 
             var isLoading by remember { mutableStateOf(true) }
@@ -102,55 +98,47 @@ class GameScheduleActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = Color(0xFFE0E0E0)
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
+                SwipeRefresh(
+                    state = swipeRefreshState,
+                    onRefresh = {
+                        isRefreshing = true
+                        coroutineScope.launch(Dispatchers.IO) {
+                            fetchCalendarEvents(calendarEvents)
+                            isRefreshing = false
+                        }
+                    }
+                ) {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
-                                .background(Color.White)
+                        IconButton(
+                            onClick = { finish() },
+                            modifier = Modifier.align(Alignment.Start)
                         ) {
-                            IconButton(
-                                onClick = { finish() },
-                                modifier = Modifier.align(Alignment.CenterVertically)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Zurück",
-                                    tint = Color.Gray
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                            ) {
-                                // Display the current host
-                                Text(
-                                    text = stringResource(R.string.schedule_title), // Setzen Sie hier Ihren Titel ein
-                                    fontSize = 18.sp, // Angepasste Schriftgröße
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF318DFF), // Angepasste Farbe
-                                    modifier = Modifier.align(Alignment.Center)
-
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(48.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.back),
+                                tint = Color.Gray
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.schedule_title),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF318DFF)
+                        )
 
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         LazyColumn(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(8.dp)
                         ) {
                             items(calendarEvents.size) { index ->
                                 val event = calendarEvents[index]
@@ -172,9 +160,7 @@ class GameScheduleActivity : ComponentActivity() {
                             value = title,
                             onValueChange = { title = it },
                             label = { Text("Ereignistitel") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
+                            modifier = Modifier.fillMaxWidth(),
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -183,64 +169,40 @@ class GameScheduleActivity : ComponentActivity() {
                             value = location,
                             onValueChange = { location = it },
                             label = { Text(stringResource(R.string.event_location)) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
+                            modifier = Modifier.fillMaxWidth(),
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Buttons to pick start and end date/time
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Startdatum Button
-                            DatePickerButton(selectedDateStart, "Startdatum") { newStartDate ->
-                                val now = Calendar.getInstance()
-                                if (newStartDate.before(now)) {
-                                    Toast.makeText(this@GameScheduleActivity, "Das Startdatum muss in der Zukunft liegen.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    selectedDateStart = newStartDate
-                                    selectedDateEnd = Calendar.getInstance().apply {
-                                        timeInMillis = selectedDateStart.timeInMillis
-                                        add(Calendar.HOUR, 2)
-                                    }
-                                }
-                            }
+                        DatePickerButton(selectedDateStart) { selectedDateStart = it }
+                        DatePickerButton(selectedDateEnd) { selectedDateEnd = it }
 
-                            Spacer(modifier = Modifier.width(16.dp)) // Abstand zwischen den Buttons
-
-                            // Enddatum Button
-                            DatePickerButton(selectedDateEnd, "Enddatum") { newEndDate ->
-                                if (newEndDate.after(selectedDateStart)) {
-                                    selectedDateEnd = newEndDate
-                                } else {
-                                    Toast.makeText(this@GameScheduleActivity, "Das Enddatum muss nach dem Startdatum liegen.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(48.dp))
 
                         Button(
                             onClick = {
                                 val newEvent = CalendarEvent(
-                                    id = "",
+                                    id = "", // Initially empty; will be set in saveEventToFirestore
                                     title = title,
                                     location = location,
                                     startTime = Timestamp(selectedDateStart.time),
                                     endTime = Timestamp(selectedDateEnd.time)
                                 )
 
-                                addEventToCalendar(newEvent)
+                                addEventToCalendar(newEvent) // Save the event to the calendar
 
+                                // Save the event to Firestore
                                 saveEventToFirestore(newEvent, calendarEvents) { eventId ->
+                                    Log.d(
+                                        "GameScheduleActivity",
+                                        getString(R.string.event_successfully_added, eventId)
+                                    )
                                     newEvent.id = eventId
                                     calendarEvents.add(newEvent)
+                                    fetchCalendarEvents(calendarEvents) // Refresh calendar events
 
+                                    // Eingabefelder zurücksetzen
                                     title = ""
                                     location = ""
                                 }
@@ -248,7 +210,7 @@ class GameScheduleActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(8.dp)
                         ) {
                             Text(text = stringResource(R.string.add_event), color = Color.White)
                         }
@@ -259,31 +221,37 @@ class GameScheduleActivity : ComponentActivity() {
     }
 
     @Composable
-    fun DatePickerButton(selectedDate: Calendar, label: String, onDateSelected: (Calendar) -> Unit) {
+    fun DatePickerButton(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
         val context = LocalContext.current
         val openDialog = remember { mutableStateOf(false) }
 
+        // Zeige den Dialog an, wenn openDialog.value true ist
         if (openDialog.value) {
+            // Initialisiere den Dialog außerhalb von LaunchedEffect
             val datePickerDialog = remember {
                 DatePickerDialog(
                     context,
                     { _, year, month, dayOfMonth ->
+                        // Setze das Datum im Calendar-Objekt
                         selectedDate.set(year, month, dayOfMonth)
 
+                        // Erstelle den TimePickerDialog
                         val timePickerDialog = TimePickerDialog(
                             context,
                             { _, hourOfDay, minute ->
+                                // Setze die Uhrzeit im Calendar-Objekt
                                 selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
                                 selectedDate.set(Calendar.MINUTE, minute)
 
+                                // Rufe die onDateSelected Callback-Funktion auf
                                 onDateSelected(selectedDate)
-                                openDialog.value = false
+                                openDialog.value = false // Schließen des Dialogs nach Auswahl
                             },
                             selectedDate.get(Calendar.HOUR_OF_DAY),
                             selectedDate.get(Calendar.MINUTE),
-                            true
+                            true // 24-Stunden-Format
                         )
-                        timePickerDialog.show()
+                        timePickerDialog.show() // Zeige den TimePickerDialog an
                     },
                     selectedDate.get(Calendar.YEAR),
                     selectedDate.get(Calendar.MONTH),
@@ -294,31 +262,30 @@ class GameScheduleActivity : ComponentActivity() {
             DisposableEffect(Unit) {
                 datePickerDialog.show()
                 onDispose {
-                    openDialog.value = false
+                    openDialog.value =
+                        false // Schließe den Dialog, wenn der Composable entfernt wird
                 }
             }
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(bottom = 16.dp) // Abstand unten
+        Button(
+            onClick = { openDialog.value = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
+            modifier = Modifier
+                .wrapContentWidth()
+                .padding(8.dp)
         ) {
-            Text(text = label, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
-            Button(
-                onClick = { openDialog.value = true },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .padding(8.dp)
-            ) {
-                Text(
-                    text = if (selectedDate.timeInMillis <= Calendar.getInstance().timeInMillis) {
-                        "Datum und Uhrzeit wählen"
-                    } else {
-                        SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(selectedDate.time)
-                    }
-                )
-            }
+            Text(
+                text = if (selectedDate.timeInMillis == Calendar.getInstance().timeInMillis) {
+                    "Startdatum und -uhrzeit wählen"
+                } else {
+                    SimpleDateFormat(
+                        "dd.MM.yyyy HH:mm",
+                        Locale.getDefault()
+                    ).format(selectedDate.time)
+
+                }
+            )
         }
     }
 
@@ -468,39 +435,39 @@ class GameScheduleActivity : ComponentActivity() {
     }
 }
 
-    @Composable
-    fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
-        Column(
-            modifier = Modifier
-                .background(Color.White, shape = RoundedCornerShape(8.dp)) // Weißer Hintergrund
-                .padding(16.dp)
-                .fillMaxWidth()
+@Composable
+fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .background(Color.White, shape = RoundedCornerShape(8.dp)) // Weißer Hintergrund
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color(0xFF318DFF)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.event_title_display, event.title),
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.event_location_display, event.location),
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onDelete,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+            modifier = Modifier.align(Alignment.End)
         ) {
-            Text(
-                text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color(0xFF318DFF)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.event_title_display, event.title),
-                fontSize = 14.sp,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.event_location_display, event.location),
-                fontSize = 14.sp,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = onDelete,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(text = stringResource(id = R.string.remove_event), color = Color.White)
-            }
+            Text(text = stringResource(id = R.string.remove_event), color = Color.White)
+        }
     }
 }

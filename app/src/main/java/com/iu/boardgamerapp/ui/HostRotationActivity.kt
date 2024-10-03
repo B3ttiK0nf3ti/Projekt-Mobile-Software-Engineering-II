@@ -2,6 +2,7 @@ package com.iu.boardgamerapp.ui
 
 import android.app.Activity
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -35,13 +36,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.di.MainViewModelFactory
+import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.iu.boardgamerapp.ui.datamodel.User
+import java.util.Calendar
 
 class HostRotationActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
+    private val firestore = FirebaseFirestore.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +63,45 @@ class HostRotationActivity : ComponentActivity() {
         setContent {
             HostRotationScreen(viewModel)
         }
+
+        // Check and rotate hosts for past events
+        checkAndRotateHosts()
+    }
+    private fun checkAndRotateHosts() {
+        firestore.collection("calendarEvents")
+            .get()
+            .addOnSuccessListener { documents ->
+                val currentTime = Calendar.getInstance().time
+
+                for (document in documents) {
+                    val event = document.toObject(CalendarEvent::class.java)
+                    event.id = document.id // ID aus Firestore-Dokument
+
+                    // Überprüfen, ob das Ereignis in der Vergangenheit liegt
+                    if (event.endTime.toDate().before(currentTime)) {
+                        rotateHostForEvent(event)
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("HostRotationActivity", "Fehler beim Laden der Ereignisse: ${e.message}", e)
+            }
+    }
+
+    private fun rotateHostForEvent(event: CalendarEvent) {
+        // Beispiel: Setze neuen Gastgeber
+        val newHost = "Neuer Gastgeber" // Hier könntest du Logik zur Auswahl eines neuen Gastgebers implementieren
+        event.title = "${event.title} - Hosted by $newHost"  // Gastgeber hinzufügen
+
+        // Aktualisiere das Ereignis in Firestore
+        firestore.collection("calendarEvents").document(event.id)
+            .update("title", event.title)
+            .addOnSuccessListener {
+                Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
+            }
     }
 
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
