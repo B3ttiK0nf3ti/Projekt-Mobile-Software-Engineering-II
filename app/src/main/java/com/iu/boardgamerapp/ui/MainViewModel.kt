@@ -53,6 +53,14 @@ class MainViewModel(
     private val _showNameDialog = mutableStateOf(false)
     val showNameDialog: State<Boolean> get() = _showNameDialog
 
+    // Liste der Spiele als LiveData
+    private val _gameList = MutableLiveData<List<Game>>()
+    val gameList: LiveData<List<Game>> = _gameList
+
+    // Spiel mit den meisten Votes
+    private val _topVotedGame = MutableLiveData<Game?>()
+    val topVotedGame: LiveData<Game?> = _topVotedGame
+
     // Callback für die Navigation
     var onNavigateToHostRotation: (() -> Unit)? = null
 
@@ -63,6 +71,7 @@ class MainViewModel(
     init {
         loadUsers()
         loadCurrentHost()
+        loadGames()
 
     }
 
@@ -146,6 +155,33 @@ class MainViewModel(
         }
     }
 
+    // Methode zum Laden der Spiele aus Firestore
+    private fun loadGames() {
+        firestore.collection("games").addSnapshotListener { snapshot, e ->
+            if (e != null) return@addSnapshotListener
+            if (snapshot != null) {
+                val games = snapshot.documents.mapNotNull { doc ->
+                    val gameName = doc.getString("game")
+                    val votesCount = doc.getLong("votes")?.toInt() ?: 0
+                    val documentId = doc.id
+                    val votedUsers = doc.get("votedUsers") as? List<String> ?: listOf()
+                    gameName?.let {
+                        Game(
+                            documentId = documentId,
+                            game = it,
+                            votes = votesCount,
+                            votedUsers = votedUsers
+                        )
+                    }
+                }
+                // Liste der Spiele aktualisieren
+                _gameList.value = games
+
+                // Spiel mit den meisten Votes ermitteln und aktualisieren
+                _topVotedGame.value = games.maxByOrNull { it.votes }
+            }
+        }
+    }
 
     fun changeHost(newHostName: String, onSuccess: () -> Unit) {
         Log.d("MainViewModel", "Wechsle Gastgeber zu: $newHostName")

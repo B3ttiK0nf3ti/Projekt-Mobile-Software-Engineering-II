@@ -1,18 +1,21 @@
 package com.iu.boardgamerapp.ui.components
 
-import BoxWithBorder
 import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -23,7 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.iu.boardgamerapp.ui.ChatActivity
 import com.iu.boardgamerapp.ui.GameChoosingActivity
@@ -37,66 +43,141 @@ fun MainScreen(
     onNavigateToGameSchedule: () -> Unit,
     onNavigateToHostRotation: () -> Unit
 ) {
-    val userName = viewModel.userName.value
-    val currentHost by viewModel.currentHost.observeAsState("Niemand")  // Den aktuellen Gastgeber observieren
-    val userList by viewModel.userList.observeAsState(emptyList())
-
+    val userName by viewModel.userName.observeAsState("Gast")
+    val currentHost by viewModel.currentHost.observeAsState("Niemand")
+    val topVotedGame by viewModel.topVotedGame.observeAsState(null)
     val context = LocalContext.current
-    val scrollState = rememberScrollState() // ScrollState für die Spalte
 
-    Box(modifier = Modifier.fillMaxSize()) {
+
+    val buttonStyle: @Composable (String, () -> Unit) -> Unit = { text, onClick ->
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 8.dp)
+                .background(
+                    color = Color(0xFF318DFF),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .clickable { onClick() }
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
+            Text(
+                text = text,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(0.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Willkommen, ${userName ?: "Gast"}!")
-            Spacer(modifier = Modifier.height(16.dp))
-            DateDisplay(date = "12.09.2024")
-            Spacer(modifier = Modifier.height(16.dp))
 
-            // Button zum Aufrufen der GameChoosingActivity
-            Button(onClick = {
-                val intent = Intent(context, GameChoosingActivity::class.java)
-                context.startActivity(intent)
-            }) {
-                Text("Abstimmen")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    Text(
+                        text = "BoardGamerApp",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF318DFF),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Aktueller Gastgeber: $currentHost")
 
+            Text(
+                text = "Willkommen, $userName!",
+                fontSize = 18.sp,
+                color = Color.Black,
+                modifier = Modifier.padding(16.dp)
+            )
 
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Button(onClick = { onNavigateToHostRotation() }) {
-                Text("Gastgeber ändern")
+            if (topVotedGame != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .background(
+                            color = Color(0xFF318DFF),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            val intent = Intent(context, GameChoosingActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+
+                        Text(
+                            text = topVotedGame!!.game,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Text(
+                            text = "(${topVotedGame?.votes} Vote${if (topVotedGame?.votes != 1) "s" else ""})",
+                            fontSize = 18.sp,
+                            color = Color.White,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Button zum Öffnen der RatingActivity, bei dem der aktuelle Gastgeber übergeben wird
-            Button(onClick = {
-                // Hier wird der Intent für die RatingActivity erstellt und der aktuelle Gastgeber übergeben
+            buttonStyle("Zum Spielplan") {
+                onNavigateToGameSchedule()
+            }
+            buttonStyle("Gastgeber-Rotation") {
+                onNavigateToHostRotation()
+            }
+            buttonStyle("Bewertung abgeben") {
                 val intent = Intent(context, RatingActivity::class.java)
-                intent.putExtra("currentHost", currentHost)  // Übergabe des aktuellen Gastgebers
-                context.startActivity(intent) // Startet die RatingActivity
-            }) {
-                Text("Bewertung abgeben") // Button, um zur Bewertung zu gehen
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            BoxWithBorder(content = "Ort: Bei Alex")
-            Spacer(modifier = Modifier.height(16.dp))
-            BoxWithBorder(content = "Essen: Pizza")
+                intent.putExtra("currentHost", currentHost)
+                context.startActivity(intent)
             }
         }
 
+        // Zusätzliche UI-Komponenten am unteren Bildschirmrand
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
             // Kalender-Symbol links unten
             IconButton(
                 onClick = {
-                    onNavigateToGameSchedule() // Nutzung des Callback
+                    onNavigateToGameSchedule()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -127,3 +208,6 @@ fun MainScreen(
             }
         }
     }
+}
+
+
