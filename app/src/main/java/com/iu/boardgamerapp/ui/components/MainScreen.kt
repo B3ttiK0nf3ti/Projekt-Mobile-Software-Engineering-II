@@ -46,6 +46,7 @@ fun MainScreen(
     val userName by viewModel.userName.observeAsState("Gast")
     val currentHost by viewModel.currentHost.observeAsState("Niemand")
     val topVotedGame by viewModel.topVotedGame.observeAsState(null)
+    val hasMultipleTopGames by viewModel.hasMultipleTopGames.observeAsState(false) // Neuer State für mehrere Gewinner
     val context = LocalContext.current
 
     val buttonStyle: @Composable (String, () -> Unit) -> Unit = { text, onClick ->
@@ -117,9 +118,35 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Überprüfen, ob ein Spiel vorhanden ist
-            val game = topVotedGame
-            if (game != null) {
+            // Überprüfen, ob es mehrere Gewinner gibt oder das Top-Spiel angezeigt werden soll
+            if (hasMultipleTopGames) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .background(
+                            color = Color(0xFF318DFF),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            val intent = Intent(context, GameChoosingActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Text(
+                        text = "Mehrere Gewinner...",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            } else if (topVotedGame != null) {
+                // Zeige das Top-Spiel an, wenn es keinen "Mehrere Gewinner"-Status gibt
+                val game = topVotedGame!!
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

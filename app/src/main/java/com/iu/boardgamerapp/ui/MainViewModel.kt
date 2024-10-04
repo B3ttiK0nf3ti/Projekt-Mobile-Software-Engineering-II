@@ -64,6 +64,10 @@ class MainViewModel(
     private val _topVotedGame = MutableLiveData<Game?>()
     val topVotedGame: LiveData<Game?> = _topVotedGame
 
+    // Neue LiveData für mehrere Top-Spiele
+    private val _hasMultipleTopGames = MutableLiveData<Boolean>(false)
+    val hasMultipleTopGames: LiveData<Boolean> get() = _hasMultipleTopGames
+
     // Callback für die Navigation
     var onNavigateToHostRotation: (() -> Unit)? = null
 
@@ -186,6 +190,10 @@ class MainViewModel(
 
                 // Spiel mit den meisten Votes ermitteln und aktualisieren
                 _topVotedGame.value = games.maxByOrNull { it.votes }
+
+                // Überprüfen, ob es mehrere Top-Spiele gibt
+                val maxVotes = games.maxOfOrNull { it.votes } ?: 0
+                _hasMultipleTopGames.value = games.count { it.votes == maxVotes } > 1
             }
         }
     }
