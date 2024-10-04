@@ -1,5 +1,7 @@
 package com.iu.boardgamerapp.ui
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.ContentResolver
 import android.content.ContentValues
@@ -51,6 +53,7 @@ import java.util.*
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.lifecycle.lifecycleScope
 
 class GameScheduleActivity : ComponentActivity() {
 
@@ -75,19 +78,19 @@ class GameScheduleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
+        lifecycleScope.launch {
+            startPeriodicEventCheck()  // Call the suspend function within the coroutine
+        }
 
         setContent {
             var isRefreshing by remember { mutableStateOf(false) }
             val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
             val coroutineScope = rememberCoroutineScope()
-            var selectedDateStart by remember { mutableStateOf(Calendar.getInstance()) }
-            var selectedDateEnd by remember {
-                mutableStateOf(
-                    Calendar.getInstance().apply { add(Calendar.HOUR, 2) })
-            }
+            var selectedDateStart = Calendar.getInstance(TimeZone.getDefault())
 
             var isLoading by remember { mutableStateOf(true) }
 
+            // Use LaunchedEffect to fetch calendar events safely within the Composable
             LaunchedEffect(Unit) {
                 isLoading = true
                 fetchCalendarEvents(calendarEvents)
@@ -103,123 +106,177 @@ class GameScheduleActivity : ComponentActivity() {
                     onRefresh = {
                         isRefreshing = true
                         coroutineScope.launch(Dispatchers.IO) {
-                            fetchCalendarEvents(calendarEvents)
+                            fetchCalendarEvents(calendarEvents) // Lade die aktuellen Events
                             isRefreshing = false
                         }
                     }
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        IconButton(
-                            onClick = { finish() },
-                            modifier = Modifier.align(Alignment.Start)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.back),
-                                tint = Color.Gray
-                            )
-                        }
+                            // Header
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
+                                    .background(Color.White)
+                            ) {
+                                IconButton(
+                                    onClick = { finish() },
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Zurück",
+                                        tint = Color.Gray
+                                    )
+                                }
 
-                        Text(
-                            text = stringResource(R.string.schedule_title),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF318DFF)
-                        )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.schedule_title),
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF318DFF),
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                        ) {
-                            items(calendarEvents.size) { index ->
-                                val event = calendarEvents[index]
-                                ScheduleItem(
-                                    event = event,
-                                    onDelete = { deleteEvent(event) }
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.width(48.dp))
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        // Dynamische Eingabefelder für Titel und Ort
-                        var title by remember { mutableStateOf("") }
-                        var location by remember { mutableStateOf("") }
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp) // Padding an den Seiten
+                            ) {
+                                items(calendarEvents.size) { index ->
+                                    val event = calendarEvents[index]
+                                    ScheduleItem(
+                                        event = event,
+                                        onDelete = { deleteEvent(event) } // Event löschen und aktualisieren
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
 
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            label = { Text("Ereignistitel") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            // Dynamische Eingabefelder für Titel und Ort
+                            var title by remember { mutableStateOf("") }
+                            var location by remember { mutableStateOf("") }
 
-                        OutlinedTextField(
-                            value = location,
-                            onValueChange = { location = it },
-                            label = { Text(stringResource(R.string.event_location)) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                label = { Text("Ereignistitel") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        // Buttons to pick start and end date/time
-                        DatePickerButton(selectedDateStart) { selectedDateStart = it }
-                        DatePickerButton(selectedDateEnd) { selectedDateEnd = it }
+                            OutlinedTextField(
+                                value = location,
+                                onValueChange = { location = it },
+                                label = { Text(stringResource(R.string.event_location)) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            )
 
-                        Spacer(modifier = Modifier.height(48.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        Button(
-                            onClick = {
-                                val newEvent = CalendarEvent(
-                                    id = "", // Initially empty; will be set in saveEventToFirestore
-                                    title = title,
-                                    location = location,
-                                    startTime = Timestamp(selectedDateStart.time),
-                                    endTime = Timestamp(selectedDateEnd.time)
-                                )
+                            // Buttons to pick start and end date/time
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp), // Padding an den Seiten
+                                contentAlignment = Alignment.Center // Zentriert den Inhalt (Button)
+                            ) {
+                                DatePickerButton(selectedDateStart) { date ->
+                                    selectedDateStart = date // Der date-Parameter ist jetzt das aktualisierte Datum
+                                }
+                            }
 
-                                addEventToCalendar(newEvent) // Save the event to the calendar
+                            Spacer(modifier = Modifier.height(48.dp))
 
-                                // Save the event to Firestore
-                                saveEventToFirestore(newEvent, calendarEvents) { eventId ->
+                            Button(
+                                onClick = {
+                                    // Check if the start date is in the future
+                                    val currentTime = Calendar.getInstance().time
+                                    if (selectedDateStart.time.before(currentTime)) {
+                                        Toast.makeText(
+                                            this@GameScheduleActivity,
+                                            "Startzeit muss in der Zukunft liegen!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@Button
+                                    }
+
                                     Log.d(
                                         "GameScheduleActivity",
-                                        getString(R.string.event_successfully_added, eventId)
+                                        "Start time (millis): ${selectedDateStart.timeInMillis}"
                                     )
-                                    newEvent.id = eventId
-                                    calendarEvents.add(newEvent)
-                                    fetchCalendarEvents(calendarEvents) // Refresh calendar events
 
-                                    // Eingabefelder zurücksetzen
-                                    title = ""
-                                    location = ""
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                        ) {
-                            Text(text = stringResource(R.string.add_event), color = Color.White)
+                                    // Set the end time to be 2 hours later than the start time
+                                    val selectedDateEnd = Calendar.getInstance().apply {
+                                        timeInMillis = selectedDateStart.timeInMillis
+                                        add(Calendar.HOUR_OF_DAY, 2) // Add 2 hours
+                                    }
+
+                                    val newEvent = CalendarEvent(
+                                        id = "",
+                                        title = title,
+                                        location = location,
+                                        startTime = Timestamp(selectedDateStart.time), // Die Zeit in der lokalen Zeitzone
+                                        endTime = Timestamp(selectedDateEnd.time) // Benutze die berechnete Endzeit in der lokalen Zeitzone
+                                    )
+
+                                    addEventToCalendar(newEvent) // Save the event to the calendar
+
+                                    // Save the event to Firestore
+                                    saveEventToFirestore(newEvent, calendarEvents) { eventId ->
+                                        Log.d(
+                                            "GameScheduleActivity",
+                                            "Event successfully added with ID: $eventId"
+                                        )
+                                        newEvent.id = eventId
+                                        calendarEvents.add(newEvent)
+                                        fetchCalendarEvents(calendarEvents)
+
+                                        // Eingabefelder zurücksetzen
+                                        title = ""
+                                        location = ""
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(
+                                        0xFF318DFF
+                                    )
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                            ) {
+                                Text(text = stringResource(R.string.add_event), color = Color.White)
+                            }
                         }
                     }
                 }
             }
         }
     }
-
     @Composable
     fun DatePickerButton(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
         val context = LocalContext.current
@@ -239,7 +296,6 @@ class GameScheduleActivity : ComponentActivity() {
                         val timePickerDialog = TimePickerDialog(
                             context,
                             { _, hourOfDay, minute ->
-                                // Setze die Uhrzeit im Calendar-Objekt
                                 selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
                                 selectedDate.set(Calendar.MINUTE, minute)
 
@@ -289,42 +345,44 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
-
     private fun deleteEvent(event: CalendarEvent) {
+        // Zuerst das Ereignis lokal aus der Liste entfernen
+        calendarEvents.remove(event)
+        // Danach die UI aktualisieren, indem die neuen Events neu geladen werden
+        fetchCalendarEvents(calendarEvents)
+
         val contentResolver: ContentResolver = contentResolver
         val uri = CalendarContract.Events.CONTENT_URI
 
         // Verwende die Kalender-ID, um das Ereignis zu löschen
         val selection = "${CalendarContract.Events._ID} = ?"
-        val selectionArgs = arrayOf(event.id) // Überprüfen, ob diese ID wirklich die Kalender-ID ist
+        val selectionArgs = arrayOf(event.id)
 
-        Log.d("GameScheduleActivity", "Attempting to delete event with ID: ${event.id}")
+        Log.d("GameScheduleActivity", "Versuche, das Event mit ID: ${event.id} zu löschen")
 
-        // Zuerst das Ereignis aus Firestore löschen, ID des Ereignisses übergeben
-        deleteEventFromFirestore(event.id) // Hier die ID des Ereignisses verwenden
+        // Ereignis aus Firestore löschen
+        deleteEventFromFirestore(event.id) // ID des Ereignisses übergeben
 
-        // Dann versuche, das Ereignis aus dem Kalender zu löschen
-        val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
-        if (deletedRows > 0) {
-            Toast.makeText(this, getString(R.string.event_successfully_deleted), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "Successfully deleted $deletedRows rows from calendar")
-            calendarEvents.remove(event) // Update local list
-        } else {
-            Toast.makeText(this, getString(R.string.no_event_found), Toast.LENGTH_SHORT).show()
-            Log.d("GameScheduleActivity", "No rows were deleted from the calendar")
+        // Das Ereignis aus dem Android-Kalender löschen
+        lifecycleScope.launch(Dispatchers.IO) {
+            val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
+            if (deletedRows > 0) {
+                Log.d("GameScheduleActivity", "Erfolgreich $deletedRows Zeilen aus dem Kalender gelöscht")
+            } else {
+                Log.d("GameScheduleActivity", "Keine Zeilen wurden aus dem Kalender gelöscht")
+            }
         }
     }
 
     fun deleteEventFromFirestore(eventId: String) {
-        Log.d("GameScheduleActivity", "Deleting Firestore event with ID: $eventId")
-
+        Log.d("GameScheduleActivity", "Lösche Firestore Event mit ID: $eventId")
         val documentRef = firestore.collection("calendarEvents").document(eventId)
         documentRef.delete()
             .addOnSuccessListener {
-                Log.d("GameScheduleActivity", "Event successfully deleted from Firestore: $eventId")
+                Log.d("GameScheduleActivity", "Event erfolgreich aus Firestore gelöscht: $eventId")
             }
             .addOnFailureListener { e ->
-                Log.e("GameScheduleActivity", "Error deleting event: $e")
+                Log.e("GameScheduleActivity", "Fehler beim Löschen des Events: $e")
             }
     }
 
@@ -408,6 +466,25 @@ class GameScheduleActivity : ComponentActivity() {
             }
     }
 
+    private suspend fun startPeriodicEventCheck() {
+        while (true) {
+            checkAndDeleteEndedEvents() // Check and delete past events
+            delay(1) // Wait for 1 minute before checking again
+        }
+    }
+    private fun checkAndDeleteEndedEvents() {
+        val currentTime = Calendar.getInstance().time
+        // Nur Events löschen, deren Endzeit in der Vergangenheit liegt
+        val endedEvents = calendarEvents.filter { it.endTime.toDate().before(currentTime) }
+        // Überprüfen, ob es überhaupt abgelaufene Events gibt
+        if (endedEvents.isNotEmpty()) {
+            Log.d("GameScheduleActivity", "Abgelaufene Events werden gelöscht: ${endedEvents.size}")
+        }
+        // Alle abgelaufenen Events löschen
+        for (event in endedEvents) {
+            deleteEvent(event)  // Löscht aus Firestore, Kalender und der lokalen Liste
+        }
+    }
     private fun checkAndRequestPermissions() {
         when {
             ContextCompat.checkSelfPermission(
@@ -444,7 +521,7 @@ fun ScheduleItem(event: CalendarEvent, onDelete: () -> Unit) {
             .fillMaxWidth()
     ) {
         Text(
-            text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(event.startTime.toDate())),
+            text = stringResource(R.string.event_date, SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(event.startTime.toDate())),
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = Color(0xFF318DFF)
