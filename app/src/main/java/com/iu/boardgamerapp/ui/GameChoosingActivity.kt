@@ -169,7 +169,7 @@ fun GameChoosingScreen(
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search for a game...") },
+                    placeholder = { Text("Nach einem Spiel suchen...") },
                     colors = TextFieldDefaults.textFieldColors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -218,7 +218,7 @@ fun GameChoosingScreen(
                     TextField(
                         value = newGame,
                         onValueChange = { newGame = it },
-                        placeholder = { Text("Enter a new game") },
+                        placeholder = { Text("Neues Spiel hinzufügen") },
                         colors = TextFieldDefaults.textFieldColors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,

@@ -117,31 +117,30 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Überprüfen, ob ein Spiel vorhanden ist
-            val game = topVotedGame
-            if (game != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .background(
-                            color = Color(0xFF318DFF),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable {
-                            val intent = Intent(context, GameChoosingActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
+            // Spielbereich anzeigen oder "Spiel hinzufügen..."-Button, wenn kein Spiel vorhanden ist
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .background(
+                        color = Color(0xFF318DFF),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .clickable {
+                        // Navigiere zur GameChoosingActivity, um ein Spiel hinzuzufügen oder das bestehende Spiel anzuzeigen
+                        val intent = Intent(context, GameChoosingActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-
+                    if (topVotedGame != null) {
                         Text(
-                            text = game.game,
+                            text = topVotedGame!!.game,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -149,40 +148,23 @@ fun MainScreen(
                         )
 
                         Text(
-                            text = "(${game.votes} Vote${if (game.votes != 1) "s" else ""})",
+                            text = "(${topVotedGame.votes} Vote${if (topVotedGame.votes != 1) "s" else ""})",
                             fontSize = 18.sp,
                             color = Color.White,
                         )
+                    } else {
+                        Text(
+                            text = "Spiel hinzufügen...",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
-            } else {
-                // Spiel hinzufügen, wenn kein Spiel vorhanden ist
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .background(
-                            color = Color(0xFF318DFF),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable {
-                            val intent = Intent(context, GameChoosingActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
-                ) {
-                    Text(
-                        text = "Spiel hinzufügen...",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                Spacer(modifier = Modifier.height(24.dp))
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             buttonStyle("Zum Spielplan") {
                 onNavigateToGameSchedule()
