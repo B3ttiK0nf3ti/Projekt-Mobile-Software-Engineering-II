@@ -21,14 +21,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallTopAppBar
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,20 +56,17 @@ class HostRotationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Create UserRepository and AppDatabaseHelper instances
+        // Initialisiere ViewModel
         val databaseHelper = AppDatabaseHelper(this)
         val repository = UserRepository(databaseHelper)
-
-        // Initialize ViewModel with the factory
         val factory = MainViewModelFactory(repository, databaseHelper, this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
 
-        // Set the content to the HostRotationScreen composable
         setContent {
             HostRotationScreen(viewModel)
         }
 
-        // Check and rotate hosts for past events
+        // Sofortige Überprüfung der Ereignisse
         checkAndRotateHosts()
     }
     private fun checkAndRotateHosts() {
@@ -89,19 +91,42 @@ class HostRotationActivity : ComponentActivity() {
     }
 
     private fun rotateHostForEvent(event: CalendarEvent) {
-        // Beispiel: Setze neuen Gastgeber
-        val newHost = "Neuer Gastgeber" // Hier könntest du Logik zur Auswahl eines neuen Gastgebers implementieren
-        event.title = "${event.title} - Hosted by $newHost"  // Gastgeber hinzufügen
+        // Benutzerliste aus Firestore oder ViewModel abrufen
+        viewModel.userList.observe(this) { userList ->
+            if (userList.isNotEmpty()) {
+                // Beispiel: Wähle einen neuen Gastgeber zufällig aus
+                val newHost = userList.random() // Wähle einen zufälligen Benutzer als neuen Gastgeber
 
-        // Aktualisiere das Ereignis in Firestore
-        firestore.collection("calendarEvents").document(event.id)
-            .update("title", event.title)
-            .addOnSuccessListener {
-                Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id}")
+                // Aktualisiere den Titel des Ereignisses mit dem neuen Gastgeber
+                event.title = "${event.title} - Hosted by ${newHost.name}" // Verwende den Namen des ausgewählten Benutzers
+
+                // Aktualisiere das Ereignis in Firestore
+                firestore.collection("calendarEvents").document(event.id)
+                    .update("title", event.title, "currentHost", newHost.name) // Aktualisiere den Gastgeber im Dokument
+                    .addOnSuccessListener {
+                        Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id} zu ${newHost.name}")
+                        // Benutzerfeedback geben
+                        showHostChangedSnackbar("Gastgeber gewechselt zu: ${newHost.name}")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
+                    }
             }
-            .addOnFailureListener { e ->
-                Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
+        }
+    }
+    private fun showHostChangedSnackbar(message: String) {
+        // Hier ist eine einfache Snackbar-Implementierung
+        setContent {
+            val snackbarHostState = remember { SnackbarHostState() }
+
+            LaunchedEffect(message) {
+                snackbarHostState.showSnackbar(message)
             }
+
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(snackbarData = data)
+            }
+        }
     }
 
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
@@ -109,10 +134,8 @@ class HostRotationActivity : ComponentActivity() {
     fun HostRotationScreen(viewModel: MainViewModel) {
         // Abrufen der Benutzerliste aus dem ViewModel
         val userList by viewModel.userList.observeAsState(emptyList())
-
         // Abrufen des aktuellen Gastgebers aus dem ViewModel
         val currentHost by viewModel.currentHost.observeAsState("Lade Gastgeber...") // Standardtext bei Ladezustand
-
 
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -201,11 +224,9 @@ class HostRotationActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
-
-
         }
-
     }
+
 
     @Composable
     fun UserItem(user: User, onClick: (User) -> Unit) {
@@ -224,5 +245,4 @@ class HostRotationActivity : ComponentActivity() {
             )
         }
     }
-
 }
