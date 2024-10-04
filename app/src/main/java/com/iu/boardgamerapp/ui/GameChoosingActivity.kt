@@ -1,8 +1,10 @@
 package com.iu.boardgamerapp.ui
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -56,6 +58,7 @@ class GameChoosingActivity : ComponentActivity() {
     private lateinit var firestore: FirebaseFirestore
     private lateinit var appDatabaseHelper: AppDatabaseHelper
 
+    @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -82,6 +85,7 @@ data class Game(
     val votedUsers: List<String> = listOf()
 )
 
+@RequiresApi(Build.VERSION_CODES.N)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameChoosingScreen(
@@ -293,13 +297,13 @@ fun GameItem(
                         change.consume()
                     },
                     onDragEnd = {
-                        // Only allow deletion if dragged a sufficient distance and not already deleting
-                        if (offsetX < -150 && !isDeleting) {
+                        // Check if the game has no votes before allowing deletion
+                        if (offsetX < -150 && !isDeleting && game.votes == 0) {
                             isDeleting = true // Set flag to prevent multiple deletions
                             gameDocument.delete()
                             offsetX = 0f
                         } else {
-                            // Reset swipe position if not enough distance covered
+                            // Reset swipe position if not enough distance covered or if game has votes
                             offsetX = 0f
                         }
                     }
