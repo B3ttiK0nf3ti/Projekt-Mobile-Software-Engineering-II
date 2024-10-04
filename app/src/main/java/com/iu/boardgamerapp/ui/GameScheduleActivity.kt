@@ -53,6 +53,7 @@ import java.util.*
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.lifecycleScope
 
 class GameScheduleActivity : ComponentActivity() {
@@ -178,10 +179,18 @@ class GameScheduleActivity : ComponentActivity() {
                             OutlinedTextField(
                                 value = title,
                                 onValueChange = { title = it },
-                                label = { Text("Ereignistitel") },
+                                label = { Text(stringResource(R.string.event_title)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 16.dp),
+                                textStyle = TextStyle(color = Color.Black), // Textfarbe Schwarz für bessere Sichtbarkeit
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = Color(0xFF318DFF),  // Dunklerer Rahmen, wenn das Feld fokussiert ist
+                                    unfocusedBorderColor = Color.Gray,  // Dunklerer Rahmen, wenn das Feld nicht fokussiert ist
+                                    cursorColor = Color.Black,  // Schwarzer Cursor für bessere Sichtbarkeit
+                                    focusedLabelColor = Color(0xFF318DFF), // Label im Fokuszustand
+                                    unfocusedLabelColor = Color.Gray  // Label im nicht fokussierten Zustand
+                                )
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -192,7 +201,16 @@ class GameScheduleActivity : ComponentActivity() {
                                 label = { Text(stringResource(R.string.event_location)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 16.dp),
+
+                                textStyle = TextStyle(color = Color.Black), // Textfarbe Schwarz für bessere Sichtbarkeit
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = Color(0xFF318DFF),  // Dunklerer Rahmen, wenn das Feld fokussiert ist
+                                    unfocusedBorderColor = Color.Gray,  // Dunklerer Rahmen, wenn das Feld nicht fokussiert ist
+                                    cursorColor = Color.Black,  // Schwarzer Cursor für bessere Sichtbarkeit
+                                    focusedLabelColor = Color(0xFF318DFF), // Label im Fokuszustand
+                                    unfocusedLabelColor = Color.Gray  // Label im nicht fokussierten Zustand
+                                )
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -213,6 +231,15 @@ class GameScheduleActivity : ComponentActivity() {
 
                             Button(
                                 onClick = {
+                                    // Check if the title or location is empty
+                                    if (title.isBlank() || location.isBlank()) {
+                                        Toast.makeText(
+                                            this@GameScheduleActivity,
+                                            "Titel und Ort dürfen nicht leer sein!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@Button
+                                    }
                                     // Check if the start date is in the future
                                     val currentTime = Calendar.getInstance().time
                                     if (selectedDateStart.time.before(currentTime)) {
