@@ -21,6 +21,9 @@ class MainViewModel(
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
+    private val _snackbarMessage = MutableLiveData<String>("")
+    val snackbarMessage: LiveData<String> get() = _snackbarMessage
+
     private val _userName = MutableLiveData<String>()
     val userName: LiveData<String> get() = _userName
 
@@ -142,6 +145,10 @@ class MainViewModel(
         }
     }
 
+    fun setSnackbarMessage(message: String) {
+        _snackbarMessage.value = message // Hier verwenden wir die MutableLiveData, um den Wert zu setzen
+    }
+
     fun updateHost(newHostName: String) {
         userRepository.updateHostStatus(newHostName) {
             // Nach dem Aktualisieren den aktuellen Gastgeber erneut laden
@@ -194,6 +201,7 @@ class MainViewModel(
                     loadUsers() // Neu laden der Benutzer
 
                     // Callback aufrufen, um den Hostwechsel zu bestätigen
+                    _snackbarMessage.value = "Gastgeber gewechselt zu: $newHostName"
                     onSuccess()
                 }
             } else {

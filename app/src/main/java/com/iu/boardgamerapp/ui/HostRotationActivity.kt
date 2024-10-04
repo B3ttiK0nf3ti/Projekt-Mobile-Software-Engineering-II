@@ -75,12 +75,15 @@ class HostRotationActivity : ComponentActivity() {
             .addOnSuccessListener { documents ->
                 val currentTime = Calendar.getInstance().time
 
+                Log.d("HostRotationActivity", "Anzahl der Dokumente: ${documents.size()}")
+
                 for (document in documents) {
                     val event = document.toObject(CalendarEvent::class.java)
-                    event.id = document.id // ID aus Firestore-Dokument
+                    event.id = document.id
 
                     // Überprüfen, ob das Ereignis in der Vergangenheit liegt
                     if (event.endTime.toDate().before(currentTime)) {
+                        Log.d("HostRotationActivity", "Ereignis in der Vergangenheit: ${event.title}")
                         rotateHostForEvent(event)
                     }
                 }
@@ -91,55 +94,57 @@ class HostRotationActivity : ComponentActivity() {
     }
 
     private fun rotateHostForEvent(event: CalendarEvent) {
-        // Benutzerliste aus Firestore oder ViewModel abrufen
         viewModel.userList.observe(this) { userList ->
             if (userList.isNotEmpty()) {
-                // Beispiel: Wähle einen neuen Gastgeber zufällig aus
-                val newHost = userList.random() // Wähle einen zufälligen Benutzer als neuen Gastgeber
+                val newHost = userList.random()
 
-                // Aktualisiere den Titel des Ereignisses mit dem neuen Gastgeber
-                event.title = "${event.title} - Hosted by ${newHost.name}" // Verwende den Namen des ausgewählten Benutzers
+                event.title = "${event.title} - Hosted by ${newHost.name}"
 
-                // Aktualisiere das Ereignis in Firestore
                 firestore.collection("calendarEvents").document(event.id)
-                    .update("title", event.title, "currentHost", newHost.name) // Aktualisiere den Gastgeber im Dokument
+                    .update("title", event.title, "currentHost", newHost.name)
                     .addOnSuccessListener {
                         Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id} zu ${newHost.name}")
-                        // Benutzerfeedback geben
-                        showHostChangedSnackbar("Gastgeber gewechselt zu: ${newHost.name}")
+                        // Snackbar-Nachricht im ViewModel setzen
+                        viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name}")
                     }
                     .addOnFailureListener { e ->
                         Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
                     }
+            } else {
+                Log.w("HostRotationActivity", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
             }
         }
     }
-    private fun showHostChangedSnackbar(message: String) {
-        // Hier ist eine einfache Snackbar-Implementierung
-        setContent {
-            val snackbarHostState = remember { SnackbarHostState() }
 
-            LaunchedEffect(message) {
+
+    @Composable
+    fun showHostChangedSnackbar(snackbarHostState: SnackbarHostState, message: String) {
+        LaunchedEffect(message) {
+            if (message.isNotEmpty()) {
                 snackbarHostState.showSnackbar(message)
             }
-
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(snackbarData = data)
-            }
         }
     }
-
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
-        // Abrufen der Benutzerliste aus dem ViewModel
         val userList by viewModel.userList.observeAsState(emptyList())
-        // Abrufen des aktuellen Gastgebers aus dem ViewModel
-        val currentHost by viewModel.currentHost.observeAsState("Lade Gastgeber...") // Standardtext bei Ladezustand
+        val currentHost by viewModel.currentHost.observeAsState("Lade Gastgeber...")
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        // Snackbar anzeigen, wenn eine Nachricht vorhanden ist
+        val snackbarMessage by viewModel.snackbarMessage.observeAsState("")
+
+        LaunchedEffect(snackbarMessage) {
+            if (snackbarMessage.isNotEmpty()) {
+                snackbarHostState.showSnackbar(snackbarMessage)
+                viewModel.setSnackbarMessage("") // Verwenden Sie die Methode aus dem ViewModel, um die Nachricht zurückzusetzen
+            }
+        }
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFE0E0E0) // Hellgrauer Hintergrund
+            color = Color(0xFFE0E0E0)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
@@ -168,12 +173,11 @@ class HostRotationActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            // Display the current host
                             Text(
-                                text = "Gastgeberwechsel", // Setzen Sie hier Ihren Titel ein
-                                fontSize = 18.sp, // Angepasste Schriftgröße
+                                text = "Gastgeberwechsel",
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF318DFF), // Angepasste Farbe
+                                color = Color(0xFF318DFF),
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         }
@@ -187,11 +191,11 @@ class HostRotationActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp), // Padding auf beiden Seiten
-                        contentAlignment = Alignment.Center // Zentriert den Inhalt
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Aktueller Gastgeber: $currentHost", // Zeigt den aktuellen Gastgeber an
+                            text = "Aktueller Gastgeber: $currentHost",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = Color.Black,
@@ -210,18 +214,21 @@ class HostRotationActivity : ComponentActivity() {
                         items(userList.size) { index ->
                             val user = userList[index]
                             UserItem(user) { selectedUser ->
-                                // Gastgeber wechseln und zur Startseite zurückkehren
                                 viewModel.changeHost(selectedUser.name) {
-                                    // Callback, um den Hostwechsel zu bestätigen
-                                    setResult(Activity.RESULT_OK) // Setze das Ergebnis
-                                    finish()  // Schließt die Activity
+                                    setResult(Activity.RESULT_OK)
+                                    finish()
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp)) // Fügt Platz zwischen den Benutzer-Items hinzu
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // SnackbarHost
+                SnackbarHost(snackbarHostState) { data ->
+                    Snackbar(snackbarData = data)
                 }
             }
         }
