@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.installations.FirebaseInstallations
 import com.iu.boardgamerapp.data.AppDatabaseHelper
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,7 +53,8 @@ class ChatActivity : ComponentActivity() {
 data class ChatMessage(
     val user: String = "",
     val message: String = "",
-    val timestamp: String = ""
+    val timestamp: String = "",
+    val firebaseInstallationId: String = ""
 )
 
 @Composable
@@ -181,13 +183,28 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
                                 timeZone = TimeZone.getTimeZone("Europe/Berlin")
                             }.format(Date())
 
-                            val newMessageObj = ChatMessage(user = userName, message = newMessage, timestamp = timestamp)
-                            chatMessages = chatMessages + newMessageObj
-                            newMessage = ""
+                            // Firebase Installation ID abrufen
+                            FirebaseInstallations.getInstance().id.addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    val firebaseId = task.result ?: return@addOnCompleteListener
 
-                            // Nachricht in Firestore speichern
-                            FirebaseFirestore.getInstance().collection("messages")
-                                .add(newMessageObj)
+                                    val newMessageObj = ChatMessage(
+                                        user = userName,
+                                        message = newMessage,
+                                        timestamp = timestamp,
+                                        firebaseInstallationId = firebaseId // Hier speichern wir die Installation ID
+                                    )
+
+                                    chatMessages = chatMessages + newMessageObj
+                                    newMessage = ""
+
+                                    // Nachricht in Firestore speichern
+                                    FirebaseFirestore.getInstance().collection("messages")
+                                        .add(newMessageObj)
+                                } else {
+                                    Log.e("ChatActivity", "Fehler beim Abrufen der Firebase Installation ID", task.exception)
+                                }
+                            }
                         },
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
