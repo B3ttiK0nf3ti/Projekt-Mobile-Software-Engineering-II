@@ -43,6 +43,7 @@ import java.util.Calendar
 import androidx.compose.ui.platform.LocalContext
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -223,7 +224,8 @@ class GameScheduleActivity : ComponentActivity() {
                                 contentAlignment = Alignment.Center // Zentriert den Inhalt (Button)
                             ) {
                                 DatePickerButton(selectedDateStart) { date ->
-                                    selectedDateStart = date // Der date-Parameter ist jetzt das aktualisierte Datum
+                                    selectedDateStart =
+                                        date // Der date-Parameter ist jetzt das aktualisierte Datum
                                 }
                             }
 
@@ -270,8 +272,6 @@ class GameScheduleActivity : ComponentActivity() {
                                         endTime = Timestamp(selectedDateEnd.time) // Benutze die berechnete Endzeit in der lokalen Zeitzone
                                     )
 
-                                    addEventToCalendar(newEvent) // Save the event to the calendar
-
                                     // Save the event to Firestore
                                     saveEventToFirestore(newEvent, calendarEvents) { eventId ->
                                         Log.d(
@@ -304,6 +304,7 @@ class GameScheduleActivity : ComponentActivity() {
             }
         }
     }
+
     @Composable
     fun DatePickerButton(selectedDate: Calendar, onDateSelected: (Calendar) -> Unit) {
         val context = LocalContext.current
@@ -394,7 +395,10 @@ class GameScheduleActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val deletedRows = contentResolver.delete(uri, selection, selectionArgs)
             if (deletedRows > 0) {
-                Log.d("GameScheduleActivity", "Erfolgreich $deletedRows Zeilen aus dem Kalender gelöscht")
+                Log.d(
+                    "GameScheduleActivity",
+                    "Erfolgreich $deletedRows Zeilen aus dem Kalender gelöscht"
+                )
             } else {
                 Log.d("GameScheduleActivity", "Keine Zeilen wurden aus dem Kalender gelöscht")
             }
@@ -413,31 +417,31 @@ class GameScheduleActivity : ComponentActivity() {
             }
     }
 
-    private fun addEventToCalendar(event: CalendarEvent) {
-        val values = ContentValues().apply {
-            put(CalendarContract.Events.TITLE, event.title)
-            put(CalendarContract.Events.EVENT_LOCATION, event.location)
-            put(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startTime.toDate().time)
-            put(CalendarContract.EXTRA_EVENT_END_TIME, event.endTime.toDate().time)
-            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+    private fun getDefaultCalendarId(): String? {
+        val projection = arrayOf(CalendarContract.Calendars._ID) // Wir wollen nur die ID
+        val cursor = contentResolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val idIndex = it.getColumnIndex(CalendarContract.Calendars._ID) // Hol die Index für die Kalender-ID
+                if (idIndex != -1) { // Überprüfen, ob der Index gültig ist
+                    val id = it.getString(idIndex)
+                    Log.d("GameScheduleActivity", "Found default calendar ID: $id")
+                    return id
+                } else {
+                    Log.e("GameScheduleActivity", "Column index for calendar ID not found")
+                }
+            } else {
+                Log.e("GameScheduleActivity", "Cursor is empty, no calendars found")
+            }
+        } ?: run {
+            Log.e("GameScheduleActivity", "Cursor is null, unable to query calendars")
         }
 
-        val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
-        if (uri != null) {
-            // Hole die ID des neu hinzugefügten Ereignisses
-            val eventId = uri.lastPathSegment ?: run {
-                Log.e("GameScheduleActivity", "Event ID is null")
-                return
-            }
-            event.id = eventId // Setze die ID des Ereignisses auf die des Kalenders
-            Log.d("GameScheduleActivity", "Event successfully added to calendar: $event")
-            Toast.makeText(this, "Event successfully added to calendar", Toast.LENGTH_SHORT).show()
-        } else {
-            Log.e("GameScheduleActivity", "Error adding event to calendar")
-        }
+        return null
     }
 
-    private fun saveEventToFirestore(
+       private fun saveEventToFirestore(
         event: CalendarEvent,
         calendarEvents: MutableList<CalendarEvent>,
         onSuccess: (String) -> Unit
