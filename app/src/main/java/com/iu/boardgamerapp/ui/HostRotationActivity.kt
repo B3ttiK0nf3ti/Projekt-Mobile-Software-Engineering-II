@@ -42,14 +42,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.EventListener
 import com.iu.boardgamerapp.data.AppDatabaseHelper
 import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.iu.boardgamerapp.ui.datamodel.User
-import kotlinx.coroutines.delay
 import java.util.Calendar
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.google.firebase.firestore.*
 
 class HostRotationActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
@@ -64,99 +74,83 @@ class HostRotationActivity : ComponentActivity() {
         val factory = MainViewModelFactory(repository, databaseHelper, this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
 
-        // Laden der Benutzerliste sicherstellen
-        viewModel.loadUsers()
-
         setContent {
             HostRotationScreen(viewModel)
         }
 
-        // Überwachung der Änderungen in der Firestore-Sammlung
-        listenForCalendarEventChanges()
+        // Überwache Änderungen in der Kalenderereignis-Sammlung
+        monitorCalendarEvents()
     }
 
-    private fun listenForCalendarEventChanges() {
+    private fun monitorCalendarEvents() {
         firestore.collection("calendarEvents")
-            .addSnapshotListener(EventListener { snapshot, e ->
+            .addSnapshotListener { snapshots, e ->
                 if (e != null) {
-                    Log.e("HostRotationActivity", "Fehler beim Abrufen von Ereignissen: ${e.message}", e)
-                    return@EventListener
+                    Log.e("HostRotationActivity", "Fehler beim Überwachen von Ereignissen: ${e.message}", e)
+                    return@addSnapshotListener
                 }
 
-                if (snapshot != null && !snapshot.isEmpty) {
-                    for (change in snapshot.documentChanges) {
-                        when (change.type) {
-                            com.google.firebase.firestore.DocumentChange.Type.REMOVED -> {
-                                val removedEvent = change.document.toObject(CalendarEvent::class.java)
-                                removedEvent.id = change.document.id
-                                Log.d("HostRotationActivity", "Ereignis entfernt: ${removedEvent.title}")
-                                // Gastgeberwechsel, wenn das Ereignis entfernt wird
-                                rotateHostForRemovedEvent(removedEvent)
-                            }
-                            com.google.firebase.firestore.DocumentChange.Type.ADDED -> {
-                                Log.d("HostRotationActivity", "Ereignis hinzugefügt: ${change.document.id}")
-                                // Optional: Sie können hier Logik hinzufügen, wenn ein Ereignis hinzugefügt wird.
-                            }
-                            com.google.firebase.firestore.DocumentChange.Type.MODIFIED -> {
-                                Log.d("HostRotationActivity", "Ereignis geändert: ${change.document.id}")
-                                // Optional: Sie können hier Logik hinzufügen, wenn ein Ereignis geändert wird.
-                            }
-                        }
+                // Überprüfen, ob Dokumente gelöscht wurden
+                snapshots?.documentChanges?.forEach { change ->
+                    if (change.type == DocumentChange.Type.REMOVED) {
+                        val event = change.document.toObject(CalendarEvent::class.java)
+                        event.id = change.document.id
+                        Log.d("HostRotationActivity", "Dokument gelöscht: ${event.title}")
+                        rotateHostForEvent(event) // Wähle neuen Gastgeber für das gelöschte Ereignis
                     }
-                } else {
-                    Log.w("HostRotationActivity", "Keine Ereignisse gefunden.")
                 }
-            })
+            }
     }
 
-    private fun rotateHostForRemovedEvent(event: CalendarEvent) {
+    private fun checkAndRotateHosts() {
+        firestore.collection("calendarEvents")
+            .get()
+            .addOnSuccessListener { documents ->
+                Log.d("HostRotationActivity", "Anzahl der Dokumente: ${documents.size()}")
+
+                // Hier keine Prüfung auf vergangene Ereignisse, da dies bereits im Worker behandelt wird
+                if (documents.isEmpty) {
+                    Log.d("HostRotationActivity", "Keine Ereignisse gefunden.")
+                } else {
+                    // Den Gastgeber für das erste Ereignis in der Liste rotieren
+                    val event = documents.documents[0].toObject(CalendarEvent::class.java)
+                    event?.let { rotateHostForEvent(it) }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("HostRotationActivity", "Fehler beim Laden der Ereignisse: ${e.message}", e)
+            }
+    }
+
+    private fun rotateHostForEvent(event: CalendarEvent) {
         viewModel.userList.observe(this) { userList ->
             if (userList.isNotEmpty()) {
-                val currentHost = userList.find { it.isHost }
+                val newHost = userList.random() // Wähle zufällig einen neuen Gastgeber aus
+                event.title = "${event.title} - Hosted by ${newHost.name}"
 
-                if (currentHost != null) {
-                    val filteredList = userList.filter { it.name != currentHost.name }
-
-                    if (filteredList.isNotEmpty()) {
-                        val newHost = filteredList.random()
-                        event.title = "${event.title} - Hosted by ${newHost.name}"
-
-                        // Vor dem Update prüfen, ob das Dokument existiert
-                        firestore.collection("calendarEvents").document(event.id).get()
-                            .addOnSuccessListener { document ->
-                                if (document.exists()) {
-                                    firestore.collection("calendarEvents").document(event.id)
-                                        .update("title", event.title, "currentHost", newHost.name)
-                                        .addOnSuccessListener {
-                                            Log.d("HostRotationActivity", "Firestore erfolgreich aktualisiert")
-                                            viewModel.changeHost(newHost.name) {
-                                                viewModel.loadCurrentHost()
-                                                setResult(Activity.RESULT_OK)
-                                                finish()
-                                            }
-                                        }
-                                        .addOnFailureListener { e ->
-                                            Log.e("HostRotationActivity", "Fehler beim Aktualisieren von Firestore: ${e.message}")
-                                        }
-                                } else {
-                                    Log.w("HostRotationActivity", "Das Dokument existiert nicht, daher kann es nicht aktualisiert werden.")
-                                }
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("HostRotationActivity", "Fehler beim Abrufen des Dokuments: ${e.message}")
-                            }
-                    } else {
-                        Log.w("HostRotationActivity", "Keine anderen Benutzer verfügbar, um den Gastgeber zu wechseln.")
+                firestore.collection("calendarEvents").document(event.id)
+                    .update("title", event.title, "currentHost", newHost.name)
+                    .addOnSuccessListener {
+                        Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id} zu ${newHost.name}")
+                        // Snackbar-Nachricht im ViewModel setzen
+                        viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name}")
                     }
-                } else {
-                    Log.w("HostRotationActivity", "Aktueller Gastgeber konnte nicht gefunden werden.")
-                }
+                    .addOnFailureListener { e ->
+                        Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
+                    }
             } else {
                 Log.w("HostRotationActivity", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
             }
         }
     }
-
+    @Composable
+    fun showHostChangedSnackbar(snackbarHostState: SnackbarHostState, message: String) {
+        LaunchedEffect(message) {
+            if (message.isNotEmpty()) {
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
     @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
@@ -170,8 +164,7 @@ class HostRotationActivity : ComponentActivity() {
         LaunchedEffect(snackbarMessage) {
             if (snackbarMessage.isNotEmpty()) {
                 snackbarHostState.showSnackbar(snackbarMessage)
-                delay(2000) // Verzögerung hinzufügen, um die Snackbar länger anzuzeigen
-                viewModel.setSnackbarMessage("") // Nachricht nach Verzögerung zurücksetzen
+                viewModel.setSnackbarMessage("") // Verwende die Methode aus dem ViewModel, um die Nachricht zurückzusetzen
             }
         }
 
