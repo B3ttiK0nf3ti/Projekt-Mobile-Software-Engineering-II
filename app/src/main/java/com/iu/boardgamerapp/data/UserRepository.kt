@@ -69,17 +69,17 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
 
 
     // Alle Benutzer abrufen
+    // In UserRepository
     fun getAllUsers(callback: (List<User>) -> Unit) {
         db.collection(USERS_COLLECTION).get()
             .addOnSuccessListener { result ->
                 val users = result.mapNotNull { document ->
-                    val userId = document.id // Verwende die ID als String
+                    val userId = document.id
                     val userName = document.getString("name") ?: ""
                     val isHost = document.getBoolean("isHost") ?: false
-
-                    User(userId, userName, isHost) // Benutzer-Objekt erstellen
+                    User(userId, userName, isHost) // Erstelle ein User-Objekt
                 }
-                callback(users)
+                callback(users) // Rückgabe der Liste der Benutzer
             }
             .addOnFailureListener { e ->
                 Log.w(TAG, "Fehler beim Abrufen der Benutzer", e)
@@ -102,12 +102,15 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                     currentHostRef.update("isHost", false)
                         .addOnSuccessListener {
                             Log.d(TAG, "Aktueller Gastgeber ${host.name} wurde erfolgreich deaktiviert.")
+                            // Callback hier aufrufen
                         }
                         .addOnFailureListener { e ->
                             Log.w(TAG, "Fehler beim Deaktivieren des aktuellen Gastgebers: ${e.message}")
+                            // Callback hier aufrufen, um sicherzustellen, dass es aufgerufen wird
                         }
                 } ?: run {
                     Log.d(TAG, "Kein aktueller Gastgeber gefunden, keine Änderung notwendig.")
+                    callback() // Callback trotzdem aufrufen
                 }
 
                 val newHostRef = db.collection(USERS_COLLECTION).document(newHost.firebaseInstallationId)

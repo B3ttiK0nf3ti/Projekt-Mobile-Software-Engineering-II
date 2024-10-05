@@ -76,10 +76,9 @@ class MainViewModel(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     init {
-        loadUsers()
-        loadCurrentHost()
-        loadGames()
-
+        loadUsers()         // Lädt die Benutzer beim Start des ViewModels
+        loadCurrentHost()   // Lädt den aktuellen Gastgeber beim Start des ViewModels
+        loadGames()         // Optional, lädt auch die Spiele
     }
 
     fun addUser(name: String, callback: (Boolean) -> Unit) {
@@ -145,6 +144,7 @@ class MainViewModel(
 
     fun loadCurrentHost() {
         userRepository.getCurrentHost { hostName ->
+            Log.d("MainViewModel", "Geladener Gastgeber: $hostName")
             _currentHost.value = hostName ?: "Niemand" // Setze den aktuellen Host
         }
     }
@@ -205,11 +205,9 @@ class MainViewModel(
             if (user != null) {
                 Log.d("MainViewModel", "Benutzer gefunden: ${user.name}")
                 userRepository.updateHostStatus(user.name) {
-                    loadCurrentHost() // Dies sollte currentHost aktualisieren
-                    loadUsers() // Neu laden der Benutzer
-
-                    // Callback aufrufen, um den Hostwechsel zu bestätigen
-                    _snackbarMessage.value = "Gastgeber gewechselt zu: $newHostName"
+                    loadCurrentHost() // Aktualisiert den aktuellen Gastgeber nach dem Wechsel
+                    loadUsers()       // Aktualisiert die Benutzerliste
+                    _snackbarMessage.value = "Gastgeber gewechselt zu: $newHostName" // Snackbar-Nachricht setzen
                     onSuccess()
                 }
             } else {
@@ -246,24 +244,7 @@ class MainViewModel(
         _selectedGame.value = updatedVotes.maxByOrNull { it.value }?.key ?: ""
     }
 
-    fun rotateHost() {
-        val users = _userList.value ?: return
-        val currentHostIndex = users.indexOfFirst { it.isHost }
-
-        if (currentHostIndex != -1) {
-            // Finde den nächsten Gastgeber (zyklisch)
-            val nextHostIndex = (currentHostIndex + 1) % users.size
-            val nextHost = users[nextHostIndex]
-
-            // Aktualisiere den Gastgeber in der Datenbank
-            userRepository.updateHostStatus(nextHost.name) {
-                loadCurrentHost() // Aktualisiere den aktuellen Gastgeber
-                loadUsers() // Benutzerliste neu laden
-            }
-        }
-    }
-
-    fun addGame(newGame: String) {
+        fun addGame(newGame: String) {
         val updatedSuggestions = _gameSuggestions.value?.toMutableList() ?: mutableListOf()
         updatedSuggestions.add(newGame)
         _gameSuggestions.value = updatedSuggestions

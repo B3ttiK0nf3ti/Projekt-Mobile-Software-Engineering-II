@@ -80,9 +80,6 @@ class GameScheduleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkAndRequestPermissions()
-        lifecycleScope.launch {
-            startPeriodicEventCheck()  // Call the suspend function within the coroutine
-        }
 
         setContent {
             var isRefreshing by remember { mutableStateOf(false) }
@@ -417,31 +414,7 @@ class GameScheduleActivity : ComponentActivity() {
             }
     }
 
-    private fun getDefaultCalendarId(): String? {
-        val projection = arrayOf(CalendarContract.Calendars._ID) // Wir wollen nur die ID
-        val cursor = contentResolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)
-
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val idIndex = it.getColumnIndex(CalendarContract.Calendars._ID) // Hol die Index für die Kalender-ID
-                if (idIndex != -1) { // Überprüfen, ob der Index gültig ist
-                    val id = it.getString(idIndex)
-                    Log.d("GameScheduleActivity", "Found default calendar ID: $id")
-                    return id
-                } else {
-                    Log.e("GameScheduleActivity", "Column index for calendar ID not found")
-                }
-            } else {
-                Log.e("GameScheduleActivity", "Cursor is empty, no calendars found")
-            }
-        } ?: run {
-            Log.e("GameScheduleActivity", "Cursor is null, unable to query calendars")
-        }
-
-        return null
-    }
-
-       private fun saveEventToFirestore(
+    private fun saveEventToFirestore(
         event: CalendarEvent,
         calendarEvents: MutableList<CalendarEvent>,
         onSuccess: (String) -> Unit
@@ -497,25 +470,6 @@ class GameScheduleActivity : ComponentActivity() {
             }
     }
 
-    private suspend fun startPeriodicEventCheck() {
-        while (true) {
-            checkAndDeleteEndedEvents() // Check and delete past events
-            delay(1) // Wait for 1 minute before checking again
-        }
-    }
-    private fun checkAndDeleteEndedEvents() {
-        val currentTime = Calendar.getInstance().time
-        // Nur Events löschen, deren Endzeit in der Vergangenheit liegt
-        val endedEvents = calendarEvents.filter { it.endTime.toDate().before(currentTime) }
-        // Überprüfen, ob es überhaupt abgelaufene Events gibt
-        if (endedEvents.isNotEmpty()) {
-            Log.d("GameScheduleActivity", "Abgelaufene Events werden gelöscht: ${endedEvents.size}")
-        }
-        // Alle abgelaufenen Events löschen
-        for (event in endedEvents) {
-            deleteEvent(event)  // Löscht aus Firestore, Kalender und der lokalen Liste
-        }
-    }
     private fun checkAndRequestPermissions() {
         when {
             ContextCompat.checkSelfPermission(

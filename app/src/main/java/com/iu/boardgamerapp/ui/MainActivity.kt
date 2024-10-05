@@ -28,6 +28,10 @@ import androidx.core.content.ContextCompat
 import com.iu.boardgamerapp.ui.HostRotationActivity
 import com.iu.boardgamerapp.ui.MainViewModel
 import java.util.*
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkRequest
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
@@ -43,6 +47,9 @@ class MainActivity : ComponentActivity() {
 
         // Überprüfe, ob der Nutzer eingeloggt ist
         checkUserLoggedIn()
+
+        // Worker planen
+        scheduleExpiredEventWorker()
 
         // Initialisiere den ActivityResultLauncher für die HostRotationActivity
         hostRotationActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -94,7 +101,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkUserLoggedIn() {
+    private fun scheduleExpiredEventWorker() {
+        // Alle 15 Minuten (oder nach Bedarf) den Worker ausführen
+        val workRequest = PeriodicWorkRequestBuilder<ExpiredEventWorker>(1, TimeUnit.HOURS).build()
+
+        // WorkManager anweisen, den Worker zu planen
+        WorkManager.getInstance(this).enqueue(workRequest)
+    }
+
+        private fun checkUserLoggedIn() {
         val databaseHelper = AppDatabaseHelper(this)
         databaseHelper.getUserWithFirebaseID { username ->
             if (username == null) {
