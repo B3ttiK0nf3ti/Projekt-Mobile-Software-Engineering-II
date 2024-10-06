@@ -18,10 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.iu.boardgamerapp.ui.datamodel.User
 
 data class Rating(
+    val userId: String = "",  // Benutzer-ID (firebaseInstallationId)
     val hostName: String = "",  // Name des Gastgebers
     val hostRating: Int = 0,    // Bewertung für den Gastgeber (0-5)
     val foodRating: Int = 0,     // Bewertung für das Essen (0-5)
@@ -30,42 +33,59 @@ data class Rating(
 
 class RatingActivity : ComponentActivity() {
     private val db = FirebaseFirestore.getInstance() // Firestore Instanz
+    private val auth = FirebaseAuth.getInstance() // Firebase Auth Instanz
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val currentHost =
-            intent.getStringExtra("currentHost") ?: "Unbekannt" // Hole den aktuellen Gastgeber
+        val currentHost = intent.getStringExtra("currentHost") ?: "Unbekannt" // Hole den aktuellen Gastgeber
+        val currentUserId = auth.currentUser?.uid ?: "" // Hole die Benutzer-ID des aktuell angemeldeten Benutzers
 
         setContent {
             RatingScreen(currentHost) { hostRating, foodRating, eveningRating ->
-                // Speichere die Bewertung in Firestore
-                saveRating(currentHost, hostRating, foodRating, eveningRating)
+                // Überprüfen, ob der Benutzer bereits eine Bewertung abgegeben hat
+                checkUserRating(currentUserId, currentHost) { alreadyRated ->
+                    if (alreadyRated) {
+                        Toast.makeText(this, "Du hast bereits eine Bewertung für diesen Gastgeber abgegeben.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Speichere die Bewertung in Firestore
+                        saveRating(currentUserId, currentHost, hostRating, foodRating, eveningRating)
+                    }
+                }
             }
         }
     }
 
-    private fun saveRating(hostName: String, hostRating: Int, foodRating: Int, eveningRating: Int) {
-        val rating = Rating(hostName, hostRating, foodRating, eveningRating)
-
-        db.collection("ratings") // Hier wird die Collection definiert, wo die Bewertungen gespeichert werden
-            .add(rating)
-            .addOnSuccessListener {
-                // Erfolg
-                Toast.makeText(this, "Bewertung erfolgreich gespeichert!", Toast.LENGTH_SHORT)
-                    .show()
-                finish() // Optional: Schließe die Activity nach dem Speichern
+    // Funktion zum Überprüfen, ob der Benutzer bereits eine Bewertung abgegeben hat
+    private fun checkUserRating(userId: String, hostName: String, callback: (Boolean) -> Unit) {
+        db.collection("ratings") // Überprüfe die Bewertungen für den aktuellen Gastgeber
+            .whereEqualTo("userId", userId) // Überprüfe die Benutzer-ID
+            .whereEqualTo("hostName", hostName)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                // Überprüfen, ob der Snapshot leer ist, was bedeutet, dass der Benutzer noch nicht bewertet hat
+                callback(snapshot.isEmpty)
             }
-            .addOnFailureListener { e ->
-                // Fehlerbehandlung
-                Toast.makeText(
-                    this,
-                    "Fehler beim Speichern der Bewertung: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+            .addOnFailureListener {
+                callback(false) // Bei Fehlern gehen wir davon aus, dass die Bewertung existiert
             }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    private fun saveRating(userId: String, hostName: String, hostRating: Int, foodRating: Int, eveningRating: Int) {
+        val rating = Rating(userId, hostName, hostRating, foodRating, eveningRating)
+
+        db.collection("ratings")
+            .add(rating) // Speichern der Bewertung in der Collection
+            .addOnSuccessListener {
+                Toast.makeText(this, "Bewertung erfolgreich gespeichert!", Toast.LENGTH_SHORT).show()
+                finish() // Activity nach dem Speichern schließen
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Fehler beim Speichern der Bewertung: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+
+  @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun RatingScreen(currentHost: String, onSubmit: (Int, Int, Int) -> Unit) {
         var hostRating by remember { mutableStateOf(0f) }

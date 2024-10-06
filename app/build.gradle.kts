@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.iu.boardgamerapp"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -84,6 +84,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore:24.0.0")
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.firebase.auth.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
