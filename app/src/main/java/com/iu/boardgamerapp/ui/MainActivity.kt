@@ -25,12 +25,15 @@ import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.components.MainScreen
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
 import androidx.core.content.ContextCompat
+import androidx.work.OneTimeWorkRequestBuilder
 import com.iu.boardgamerapp.ui.HostRotationActivity
 import com.iu.boardgamerapp.ui.MainViewModel
 import java.util.*
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -41,15 +44,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var hostRotationActivityResultLauncher: ActivityResultLauncher<Intent>
+    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Überprüfe, ob der Nutzer eingeloggt ist
         checkUserLoggedIn()
-
-        // Worker planen
         scheduleExpiredEventWorker()
+        listenForEventChanges()
 
         // Initialisiere den ActivityResultLauncher für die HostRotationActivity
         hostRotationActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -101,12 +104,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun scheduleExpiredEventWorker() {
-        // Alle 15 Minuten (oder nach Bedarf) den Worker ausführen
-        val workRequest = PeriodicWorkRequestBuilder<ExpiredEventWorker>(1, TimeUnit.HOURS).build()
+    private fun listenForEventChanges() {
+        firestore.collection("calendarEvents")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("MainActivity", "Fehler beim Abrufen von Ereignissen: $e")
+                    return@addSnapshotListener
+                }
 
-        // WorkManager anweisen, den Worker zu planen
-        WorkManager.getInstance(this).enqueue(workRequest)
+                if (snapshot != null && !snapshot.isEmpty) {
+                    for (document in snapshot.documents) {
+                        val event = document.toObject(CalendarEvent::class.java)
+                        // Hier könnte man eine Logik implementieren, die prüft, ob das Ereignis abgelaufen ist
+                        if (event != null && event.endTime.toDate().time < System.currentTimeMillis()) {
+                            Log.d("MainActivity", "Ereignis abgelaufen: ${event.title}")
+                            // Hier wird nichts mehr getan, das Löschen wird durch den Worker behandelt
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun scheduleExpiredEventWorker() {
+        // OneTimeWorkRequest für sofortige Ausführung
+        val oneTimeWorkRequest = OneTimeWorkRequestBuilder<ExpiredEventWorker>().build()
+        WorkManager.getInstance(this).enqueue(oneTimeWorkRequest)
+
+        // PeriodicWorkRequest für regelmäßige Ausführung alle 15 Minuten
+        val periodicWorkRequest = PeriodicWorkRequestBuilder<ExpiredEventWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueue(periodicWorkRequest)
     }
 
         private fun checkUserLoggedIn() {

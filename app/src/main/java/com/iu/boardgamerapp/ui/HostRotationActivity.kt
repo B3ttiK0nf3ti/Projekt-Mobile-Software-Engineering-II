@@ -90,16 +90,51 @@ class HostRotationActivity : ComponentActivity() {
                     return@addSnapshotListener
                 }
 
-                // Überprüfen, ob Dokumente gelöscht wurden
                 snapshots?.documentChanges?.forEach { change ->
                     if (change.type == DocumentChange.Type.REMOVED) {
-                        val event = change.document.toObject(CalendarEvent::class.java)
-                        event.id = change.document.id
-                        Log.d("HostRotationActivity", "Dokument gelöscht: ${event.title}")
-                        rotateHostForEvent(event) // Wähle neuen Gastgeber für das gelöschte Ereignis
+                        val deletedEvent = change.document.toObject(CalendarEvent::class.java)
+                        deletedEvent.id = change.document.id
+                        Log.d("HostRotationActivity", "Ereignis gelöscht: ${deletedEvent.title}")
+
+                        // Gastgeberrotation erst nach erfolgreichem Löschen des Events
+                        rotateHostForDeletedEvent(deletedEvent)
                     }
                 }
             }
+    }
+
+    private fun rotateHostForDeletedEvent(event: CalendarEvent) {
+        viewModel.userList.observe(this) { userList ->
+            if (userList.isNotEmpty()) {
+                val currentHost = userList.find { it.isHost } // Finde den aktuellen Gastgeber
+                val newHost = userList.random() // Wähle zufällig einen neuen Gastgeber aus
+
+                // Firestore Batch, um mehrere Operationen in einer Transaktion durchzuführen
+                val batch = firestore.batch()
+
+                // Setze den aktuellen Gastgeber auf isHost = false
+                currentHost?.let {
+                    val currentHostRef = firestore.collection("users").document(it.firebaseInstallationId)
+                    batch.update(currentHostRef, "isHost", false)
+                }
+
+                // Setze den neuen Gastgeber auf isHost = true
+                val newHostRef = firestore.collection("users").document(newHost.firebaseInstallationId)
+                batch.update(newHostRef, "isHost", true)
+
+                // Führe das Batch-Update durch
+                batch.commit()
+                    .addOnSuccessListener {
+                        Log.d("HostRotationActivity", "Gastgeber gewechselt zu: ${newHost.name}")
+                        viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name} nach Löschen eines Ereignisses.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("HostRotationActivity", "Fehler beim Ändern des Gastgebers: $e")
+                    }
+            } else {
+                Log.w("HostRotationActivity", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
+            }
+        }
     }
 
     private fun checkAndRotateHosts() {
@@ -132,7 +167,6 @@ class HostRotationActivity : ComponentActivity() {
                     .update("title", event.title, "currentHost", newHost.name)
                     .addOnSuccessListener {
                         Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id} zu ${newHost.name}")
-                        // Snackbar-Nachricht im ViewModel setzen
                         viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name}")
                     }
                     .addOnFailureListener { e ->
