@@ -21,10 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.iu.boardgamerapp.ui.datamodel.User
 
 data class Rating(
-    val userId: String = "",  // Benutzer-ID (firebaseInstallationId)
     val hostName: String = "",  // Name des Gastgebers
     val hostRating: Int = 0,    // Bewertung für den Gastgeber (0-5)
     val foodRating: Int = 0,     // Bewertung für das Essen (0-5)
@@ -37,55 +35,43 @@ class RatingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val currentHost = intent.getStringExtra("currentHost") ?: "Unbekannt" // Hole den aktuellen Gastgeber
-        val currentUserId = auth.currentUser?.uid ?: "" // Hole die Benutzer-ID des aktuell angemeldeten Benutzers
 
+        // Hole den aktuellen Gastgeber aus Firestore
         setContent {
+            var currentHost by remember { mutableStateOf("Lade...") } // Standardwert beim Laden
+            LaunchedEffect(Unit) {
+                currentHost = fetchCurrentHost() // Hole den aktuellen Gastgeber
+            }
+
             RatingScreen(currentHost) { hostRating, foodRating, eveningRating ->
-                // Überprüfen, ob der Benutzer bereits eine Bewertung abgegeben hat
-                checkUserRating(currentUserId, currentHost) { alreadyRated ->
-                    if (alreadyRated) {
-                        Toast.makeText(this, "Du hast bereits eine Bewertung für diesen Gastgeber abgegeben.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // Speichere die Bewertung in Firestore
-                        saveRating(currentUserId, currentHost, hostRating, foodRating, eveningRating)
-                    }
-                }
+                // Speichere die Bewertung in Firestore
+                saveRating(currentHost, hostRating, foodRating, eveningRating)
             }
         }
     }
 
-    // Funktion zum Überprüfen, ob der Benutzer bereits eine Bewertung abgegeben hat
-    private fun checkUserRating(userId: String, hostName: String, callback: (Boolean) -> Unit) {
-        db.collection("ratings") // Überprüfe die Bewertungen für den aktuellen Gastgeber
-            .whereEqualTo("userId", userId) // Überprüfe die Benutzer-ID
-            .whereEqualTo("hostName", hostName)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                // Überprüfen, ob der Snapshot leer ist, was bedeutet, dass der Benutzer noch nicht bewertet hat
-                callback(snapshot.isEmpty)
-            }
-            .addOnFailureListener {
-                callback(false) // Bei Fehlern gehen wir davon aus, dass die Bewertung existiert
-            }
-    }
+    private fun saveRating(hostName: String, hostRating: Int, foodRating: Int, eveningRating: Int) {
+        val rating = Rating(hostName, hostRating, foodRating, eveningRating)
 
-    private fun saveRating(userId: String, hostName: String, hostRating: Int, foodRating: Int, eveningRating: Int) {
-        val rating = Rating(userId, hostName, hostRating, foodRating, eveningRating)
-
-        db.collection("ratings")
-            .add(rating) // Speichern der Bewertung in der Collection
+        db.collection("ratings") // Hier wird die Collection definiert, wo die Bewertungen gespeichert werden
+            .add(rating)
             .addOnSuccessListener {
-                Toast.makeText(this, "Bewertung erfolgreich gespeichert!", Toast.LENGTH_SHORT).show()
-                finish() // Activity nach dem Speichern schließen
+                // Erfolg
+                Toast.makeText(this, "Bewertung erfolgreich gespeichert!", Toast.LENGTH_SHORT)
+                    .show()
+                finish() // Optional: Schließe die Activity nach dem Speichern
             }
             .addOnFailureListener { e ->
-                Toast.makeText(this, "Fehler beim Speichern der Bewertung: ${e.message}", Toast.LENGTH_SHORT).show()
+                // Fehlerbehandlung
+                Toast.makeText(
+                    this,
+                    "Fehler beim Speichern der Bewertung: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 
-
-  @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun RatingScreen(currentHost: String, onSubmit: (Int, Int, Int) -> Unit) {
         var hostRating by remember { mutableStateOf(0f) }
@@ -97,11 +83,13 @@ class RatingActivity : ComponentActivity() {
         var averageEveningRating by remember { mutableStateOf(0f) }
 
         // Bewertungen abrufen, wenn der Screen geladen wird
-        LaunchedEffect(Unit) {
-            val averages = fetchAverageRatings(currentHost)
-            averageHostRating = averages[0]
-            averageFoodRating = averages[1]
-            averageEveningRating = averages[2]
+        LaunchedEffect(currentHost) {
+            if (currentHost != "Lade...") {
+                val averages = fetchAverageRatings(currentHost)
+                averageHostRating = averages[0]
+                averageFoodRating = averages[1]
+                averageEveningRating = averages[2]
+            }
         }
 
         Surface(
@@ -148,7 +136,6 @@ class RatingActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.width(48.dp))
                     }
 
-                    // Bewertung für den Gastgeber
                     // LazyColumn für scrollbare Slider
                     LazyColumn(
                         modifier = Modifier
@@ -157,20 +144,12 @@ class RatingActivity : ComponentActivity() {
                             .padding(horizontal = 16.dp)  // Horizontaler Abstand für die Slider
                     ) {
                         item {
-                            // Bewertung für den Gastgeber
                             Spacer(modifier = Modifier.height(24.dp))
                             RatingSlider("Bewerte den Gastgeber", hostRating) { hostRating = it }
-
                             Spacer(modifier = Modifier.height(24.dp))
-
-                            // Bewertung für das Essen
                             RatingSlider("Bewerte das Essen", foodRating) { foodRating = it }
-
                             Spacer(modifier = Modifier.height(24.dp))
-
-                            // Bewertung für den Abend
                             RatingSlider("Bewerte den Abend", eveningRating) { eveningRating = it }
-
                             Spacer(modifier = Modifier.height(48.dp))
 
                             // Durchschnittsbewertungen anzeigen
@@ -198,7 +177,6 @@ class RatingActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
-
                     ) {
                         Button(
                             onClick = {
@@ -216,6 +194,22 @@ class RatingActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun fetchCurrentHost(): String {
+        // Zugriff auf die Benutzer-Sammlung
+        val userSnapshot = db.collection("user")
+            .whereEqualTo("isHost", true) // Suche nach Benutzern, die Gastgeber sind
+            .get()
+            .await()
+
+        // Überprüfe, ob der Snapshot nicht leer ist und gib den Namen zurück
+        return if (!userSnapshot.isEmpty) {
+            val hostUser = userSnapshot.documents[0] // Angenommen, es gibt nur einen Gastgeber
+            hostUser.getString("name") ?: "Unbekannt" // Nutze den Namen des Benutzers
+        } else {
+            "Unbekannt" // Wenn kein Gastgeber gefunden wird
         }
     }
 
