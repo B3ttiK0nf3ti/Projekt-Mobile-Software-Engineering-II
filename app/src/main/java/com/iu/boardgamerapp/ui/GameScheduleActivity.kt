@@ -307,44 +307,54 @@ class GameScheduleActivity : ComponentActivity() {
         val context = LocalContext.current
         val openDialog = remember { mutableStateOf(false) }
 
+        // Button zum Öffnen des DatePickers
+        Button(onClick = { openDialog.value = true }) {
+            Text(text = "Datum auswählen")
+        }
+
         // Zeige den Dialog an, wenn openDialog.value true ist
         if (openDialog.value) {
-            // Initialisiere den Dialog außerhalb von LaunchedEffect
-            val datePickerDialog = remember {
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        // Setze das Datum im Calendar-Objekt
-                        selectedDate.set(year, month, dayOfMonth)
+            // DatePickerDialog wird bei jedem Klick neu erstellt
+            val datePickerDialog = DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    // Setze das Datum im Calendar-Objekt
+                    selectedDate.set(year, month, dayOfMonth)
 
-                        // Erstelle den TimePickerDialog
-                        val timePickerDialog = TimePickerDialog(
-                            context,
-                            { _, hourOfDay, minute ->
-                                selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                                selectedDate.set(Calendar.MINUTE, minute)
+                    // Zeige den TimePickerDialog an
+                    val timePickerDialog = TimePickerDialog(
+                        context,
+                        { _, hourOfDay, minute ->
+                            selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                            selectedDate.set(Calendar.MINUTE, minute)
 
-                                // Rufe die onDateSelected Callback-Funktion auf
-                                onDateSelected(selectedDate)
-                                openDialog.value = false // Schließen des Dialogs nach Auswahl
-                            },
-                            selectedDate.get(Calendar.HOUR_OF_DAY),
-                            selectedDate.get(Calendar.MINUTE),
-                            true // 24-Stunden-Format
-                        )
-                        timePickerDialog.show() // Zeige den TimePickerDialog an
-                    },
-                    selectedDate.get(Calendar.YEAR),
-                    selectedDate.get(Calendar.MONTH),
-                    selectedDate.get(Calendar.DAY_OF_MONTH)
-                )
+                            // Rufe die onDateSelected Callback-Funktion auf
+                            onDateSelected(selectedDate)
+
+                            // Dialog schließen
+                            openDialog.value = false
+                        },
+                        selectedDate.get(Calendar.HOUR_OF_DAY),
+                        selectedDate.get(Calendar.MINUTE),
+                        true // 24-Stunden-Format
+                    )
+                    timePickerDialog.show() // Zeige den TimePickerDialog an
+                },
+                selectedDate.get(Calendar.YEAR),
+                selectedDate.get(Calendar.MONTH),
+                selectedDate.get(Calendar.DAY_OF_MONTH)
+            )
+
+            // Listener für den Fall, dass der Dialog abgebrochen wird
+            datePickerDialog.setOnCancelListener {
+                openDialog.value = false // Zustand zurücksetzen, wenn der Benutzer abbricht
             }
 
+            // Zeige den DatePickerDialog an
             DisposableEffect(Unit) {
                 datePickerDialog.show()
                 onDispose {
-                    openDialog.value =
-                        false // Schließe den Dialog, wenn der Composable entfernt wird
+                    openDialog.value = false // Schließe den Dialog, wenn der Composable entfernt wird
                 }
             }
         }
