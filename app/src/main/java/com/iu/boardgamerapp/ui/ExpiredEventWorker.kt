@@ -6,11 +6,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.google.firebase.firestore.FirebaseFirestore
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
-import java.util.Calendar
-import com.google.firebase.Timestamp // Import für Timestamp
 import com.iu.boardgamerapp.ui.datamodel.User
-import java.util.Date // Import für Date
-import com.iu.boardgamerapp.ui.HostRotationActivity
 
 class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : Worker(appContext, workerParams) {
     private val firestore = FirebaseFirestore.getInstance()

@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,24 +12,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallTopAppBar
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
@@ -47,18 +37,6 @@ import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.iu.boardgamerapp.ui.datamodel.User
-import java.util.Calendar
-import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.*
 
 class HostRotationActivity : ComponentActivity() {
@@ -137,55 +115,6 @@ class HostRotationActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndRotateHosts() {
-        firestore.collection("calendarEvents")
-            .get()
-            .addOnSuccessListener { documents ->
-                Log.d("HostRotationActivity", "Anzahl der Dokumente: ${documents.size()}")
-
-                // Hier keine Prüfung auf vergangene Ereignisse, da dies bereits im Worker behandelt wird
-                if (documents.isEmpty) {
-                    Log.d("HostRotationActivity", "Keine Ereignisse gefunden.")
-                } else {
-                    // Den Gastgeber für das erste Ereignis in der Liste rotieren
-                    val event = documents.documents[0].toObject(CalendarEvent::class.java)
-                    event?.let { rotateHostForEvent(it) }
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("HostRotationActivity", "Fehler beim Laden der Ereignisse: ${e.message}", e)
-            }
-    }
-
-    private fun rotateHostForEvent(event: CalendarEvent) {
-        viewModel.userList.observe(this) { userList ->
-            if (userList.isNotEmpty()) {
-                val newHost = userList.random() // Wähle zufällig einen neuen Gastgeber aus
-                event.title = "${event.title} - Hosted by ${newHost.name}"
-
-                firestore.collection("calendarEvents").document(event.id)
-                    .update("title", event.title, "currentHost", newHost.name)
-                    .addOnSuccessListener {
-                        Log.d("HostRotationActivity", "Host erfolgreich aktualisiert für Ereignis: ${event.id} zu ${newHost.name}")
-                        viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name}")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("HostRotationActivity", "Fehler beim Aktualisieren des Gastgebers: $e")
-                    }
-            } else {
-                Log.w("HostRotationActivity", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
-            }
-        }
-    }
-    @Composable
-    fun showHostChangedSnackbar(snackbarHostState: SnackbarHostState, message: String) {
-        LaunchedEffect(message) {
-            if (message.isNotEmpty()) {
-                snackbarHostState.showSnackbar(message)
-            }
-        }
-    }
-    @OptIn(ExperimentalMaterial3Api::class) // Suppress experimental API warning
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
         val userList by viewModel.userList.observeAsState(emptyList())

@@ -5,7 +5,3 @@ data class User(
     val name: String = "",                    // Standardwert hinzufügen
     val isHost: Boolean = false                // Standardwert hinzufügen
 )
-{
-    // Füge einen leeren Konstruktor hinzu, falls nicht vorhanden
-    constructor() : this("", "", false)
-}

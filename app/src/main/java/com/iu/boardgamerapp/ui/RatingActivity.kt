@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -31,7 +29,6 @@ data class Rating(
 
 class RatingActivity : ComponentActivity() {
     private val db = FirebaseFirestore.getInstance() // Firestore Instanz
-    private val auth = FirebaseAuth.getInstance() // Firebase Auth Instanz
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,7 +68,6 @@ class RatingActivity : ComponentActivity() {
             }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun RatingScreen(currentHost: String, onSubmit: (Int, Int, Int) -> Unit) {
         var hostRating by remember { mutableStateOf(0f) }

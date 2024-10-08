@@ -1,11 +1,8 @@
 package com.iu.boardgamerapp.ui
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.ContentResolver
-import android.content.ContentValues
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
@@ -34,7 +31,6 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.google.firebase.Timestamp
 import com.iu.boardgamerapp.R
@@ -43,17 +39,12 @@ import java.util.Calendar
 import androidx.compose.ui.platform.LocalContext
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.os.Build
-import androidx.compose.foundation.border
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import java.util.*
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Text
 import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.lifecycleScope
 
@@ -412,7 +403,7 @@ class GameScheduleActivity : ComponentActivity() {
         }
     }
 
-    fun deleteEventFromFirestore(eventId: String) {
+   private fun deleteEventFromFirestore(eventId: String) {
         Log.d("GameScheduleActivity", "Lösche Firestore Event mit ID: $eventId")
         val documentRef = firestore.collection("calendarEvents").document(eventId)
         documentRef.delete()
