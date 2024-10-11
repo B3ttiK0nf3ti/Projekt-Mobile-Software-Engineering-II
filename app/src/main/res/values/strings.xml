@@ -30,4 +30,38 @@
     <string name="event_deleted">Ereignis gelöscht</string>
     <string name="event_not_deleted">Ereignis konnte nicht gelöscht werden</string>
     <string name="select_start_date_time">Startzeit auswählen</string>
+    <string name="back_button">Zurück</string>
+    <string name="host_rotation_title">Gastgeberwechsel</string>
+    <string name="current_host">Aktueller Gastgeber: %1$s</string>
+    <string name="host_changed_snackbar">Gastgeber gewechselt zu: %1$s nach Löschen eines Ereignisses.</string>
+    <string name="error_event_deletion">Fehler beim Ändern des Gastgebers: %1$s</string>
+    <string name="user_list_empty_warning">Benutzerliste ist leer, kein Gastgeberwechsel möglich.</string>
+    <string name="loading_host">Lade Gastgeber...</string>
+    <string name="worker_error">Fehler im Worker: %1$s</string>
+    <string name="current_time_log">Aktuelle Zeit: %1$s</string>
+    <string name="documents_found_log">Anzahl der gefundenen Dokumente: %1$s</string>
+    <string name="delete_event_log">Löschen des Ereignisses: %1$s</string>
+    <string name="event_removed_log">Ereignis erfolgreich entfernt: %1$s</string>
+    <string name="event_removal_error">Fehler beim Entfernen des Ereignisses: %1$s</string>
+    <string name="events_fetch_error">Fehler beim Abrufen von Ereignissen: %1$s</string>
+    <string name="users_fetched_log">Benutzer abgerufen: %1$s gefunden.</string>
+    <string name="no_host_found_warning">Kein aktueller Gastgeber gefunden.</string>
+    <string name="no_available_hosts_warning">Keine verfügbaren Gastgeber zum Wechseln gefunden.</string>
+    <string name="host_changed_log">Gastgeber gewechselt zu: %1$s</string>
+    <string name="host_change_error">Fehler beim Ändern des Gastgebers: %1$s</string>
+    <string name="users_fetch_error">Fehler beim Abrufen der Benutzer: %1$s</string>
+    <string name="unknown_host">Unbekannt</string>
+    <string name="back_button_description">Zurück</string>
+    <string name="submit_rating_button">Bewertung abschicken</string>
+    <string name="rate_host">Bewerte den Gastgeber</string>
+    <string name="rate_food">Bewerte das Essen</string>
+    <string name="rate_evening">Bewerte den Abend</string>
+    <string name="average_ratings_label">Durchschnittliche Bewertungen:</string>
+    <string name="average_host_rating">Gastgeber: %.2f</string>
+    <string name="average_food_rating">Essen: %.2f</string>
+    <string name="average_evening_rating">Abend: %.2f</string>
+    <string name="rating_saved_success">Bewertung erfolgreich gespeichert!</string>
+    <string name="rating_save_error">Fehler beim Speichern der Bewertung: %1$s</string>
+
+
 </resources>

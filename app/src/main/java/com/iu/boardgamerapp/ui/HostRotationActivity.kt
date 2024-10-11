@@ -38,6 +38,7 @@ import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.iu.boardgamerapp.ui.datamodel.User
 import com.google.firebase.firestore.*
+import com.iu.boardgamerapp.R
 
 class HostRotationActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
@@ -104,13 +105,14 @@ class HostRotationActivity : ComponentActivity() {
                 batch.commit()
                     .addOnSuccessListener {
                         Log.d("HostRotationActivity", "Gastgeber gewechselt zu: ${newHost.name}")
-                        viewModel.setSnackbarMessage("Gastgeber gewechselt zu: ${newHost.name} nach Löschen eines Ereignisses.")
+                        viewModel.setSnackbarMessage(getString(R.string.host_changed_snackbar, newHost.name)) // Snackbar Text
                     }
                     .addOnFailureListener { e ->
                         Log.e("HostRotationActivity", "Fehler beim Ändern des Gastgebers: $e")
+                        viewModel.setSnackbarMessage(getString(R.string.error_event_deletion, e.message)) // Fehler Nachricht
                     }
             } else {
-                Log.w("HostRotationActivity", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
+                Log.w("HostRotationActivity", getString(R.string.user_list_empty_warning))
             }
         }
     }
@@ -118,7 +120,7 @@ class HostRotationActivity : ComponentActivity() {
     @Composable
     fun HostRotationScreen(viewModel: MainViewModel) {
         val userList by viewModel.userList.observeAsState(emptyList())
-        val currentHost by viewModel.currentHost.observeAsState("Lade Gastgeber...")
+        val currentHost by viewModel.currentHost.observeAsState(getString(R.string.loading_host))
         val snackbarHostState = remember { SnackbarHostState() }
 
         // Snackbar anzeigen, wenn eine Nachricht vorhanden ist
@@ -152,7 +154,7 @@ class HostRotationActivity : ComponentActivity() {
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Zurück",
+                                contentDescription = getString(R.string.back_button),
                                 tint = Color.Gray
                             )
                         }
@@ -163,7 +165,7 @@ class HostRotationActivity : ComponentActivity() {
                                 .weight(1f)
                         ) {
                             Text(
-                                text = "Gastgeberwechsel",
+                                text = getString(R.string.current_host, currentHost),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF318DFF),

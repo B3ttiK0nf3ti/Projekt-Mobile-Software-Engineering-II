@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.google.firebase.firestore.FirebaseFirestore
+import com.iu.boardgamerapp.R
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import com.iu.boardgamerapp.ui.datamodel.User
 
@@ -16,45 +17,45 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
             removeExpiredEvents()
             Result.success()
         } catch (e: Exception) {
-            Log.e("ExpiredEventWorker", "Fehler im Worker: ${e.message}", e)
+            Log.e("ExpiredEventWorker", applicationContext.getString(R.string.worker_error, e.message), e) // Verwende String-Ressource
             Result.failure()
         }
     }
 
     private fun removeExpiredEvents() {
         val now = System.currentTimeMillis()
-        Log.d("ExpiredEventWorker", "Aktuelle Zeit: $now")
+        Log.d("ExpiredEventWorker", applicationContext.getString(R.string.current_time_log, now.toString()))
 
         firestore.collection("calendarEvents")
             .get()
             .addOnSuccessListener { snapshot ->
                 Log.d(
                     "ExpiredEventWorker",
-                    "Anzahl der gefundenen Dokumente: ${snapshot.documents.size}"
+                    applicationContext.getString(R.string.documents_found_log, snapshot.documents.size.toString())
                 )
                 for (document in snapshot.documents) {
                     val event = document.toObject(CalendarEvent::class.java)
                     if (event != null && event.endTime.toDate().time < now) {
-                        Log.d("ExpiredEventWorker", "Löschen des Ereignisses: ${document.id}")
+                        Log.d("ExpiredEventWorker", applicationContext.getString(R.string.delete_event_log, document.id))
                         firestore.collection("calendarEvents").document(document.id).delete()
                             .addOnSuccessListener {
                                 Log.d(
                                     "ExpiredEventWorker",
-                                    "Ereignis erfolgreich entfernt: ${document.id}"
+                                    applicationContext.getString(R.string.event_removed_log, document.id)
                                 )
                                 rotateHostForDeletedEvent(event) // Wechselt den Gastgeber
                             }
                             .addOnFailureListener { e ->
                                 Log.e(
                                     "ExpiredEventWorker",
-                                    "Fehler beim Entfernen des Ereignisses: $e"
+                                    applicationContext.getString(R.string.event_removal_error, e.toString())
                                 )
                             }
                     }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("ExpiredEventWorker", "Fehler beim Abrufen von Ereignissen: $e")
+                Log.e("ExpiredEventWorker", applicationContext.getString(R.string.events_fetch_error, e.toString()))
             }
     }
 
@@ -75,14 +76,14 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
                     userList.add(user)
                 }
 
-                Log.d("ExpiredEventWorker", "Benutzer abgerufen: ${userList.size} gefunden.")
+                Log.d("ExpiredEventWorker", applicationContext.getString(R.string.users_fetched_log, userList.size.toString()))
 
                 if (userList.isNotEmpty()) {
                     // Suche nach dem aktuellen Gastgeber
                     val currentHost = userList.find { it.isHost }
 
                     if (currentHost == null) {
-                        Log.w("ExpiredEventWorker", "Kein aktueller Gastgeber gefunden.")
+                        Log.w("ExpiredEventWorker", applicationContext.getString(R.string.no_host_found_warning))
                         return@addOnSuccessListener // Beende die Methode hier, wenn kein Gastgeber gefunden wird
                     }
 
@@ -90,7 +91,7 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
                     val availableHosts = userList.filter { it.firebaseInstallationId != currentHost.firebaseInstallationId }
 
                     if (availableHosts.isEmpty()) {
-                        Log.w("ExpiredEventWorker", "Keine verfügbaren Gastgeber zum Wechseln gefunden.")
+                        Log.w("ExpiredEventWorker", applicationContext.getString(R.string.no_available_hosts_warning))
                         return@addOnSuccessListener // Beende die Methode, wenn keine verfügbaren Gastgeber gefunden wurden
                     }
 
@@ -111,17 +112,17 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
                     // Batch-Commit durchführen
                     batch.commit()
                         .addOnSuccessListener {
-                            Log.d("ExpiredEventWorker", "Gastgeber gewechselt zu: ${newHost.name}")
+                            Log.d("ExpiredEventWorker", applicationContext.getString(R.string.host_changed_log, newHost.name))
                         }
                         .addOnFailureListener { e ->
-                            Log.e("ExpiredEventWorker", "Fehler beim Ändern des Gastgebers: $e")
+                            Log.e("ExpiredEventWorker", applicationContext.getString(R.string.host_change_error, e.toString()))
                         }
                 } else {
-                    Log.w("ExpiredEventWorker", "Benutzerliste ist leer, kein Gastgeberwechsel möglich.")
+                    Log.w("ExpiredEventWorker", applicationContext.getString(R.string.user_list_empty_warning))
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("ExpiredEventWorker", "Fehler beim Abrufen der Benutzer: $e")
+                Log.e("ExpiredEventWorker", applicationContext.getString(R.string.users_fetch_error, e.toString()))
             }
     }
 }

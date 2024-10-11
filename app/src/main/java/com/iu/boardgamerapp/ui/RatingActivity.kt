@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.iu.boardgamerapp.R
 import kotlinx.coroutines.tasks.await
 
 data class Rating(
@@ -35,9 +36,9 @@ class RatingActivity : ComponentActivity() {
 
         // Hole den aktuellen Gastgeber aus Firestore
         setContent {
-            var currentHost by remember { mutableStateOf("Lade...") } // Standardwert beim Laden
+            var currentHost by remember { mutableStateOf(getString(R.string.loading_host)) } // Ladezustand
             LaunchedEffect(Unit) {
-                currentHost = fetchCurrentHost() // Hole den aktuellen Gastgeber
+                currentHost = fetchCurrentHost() // Gastgeber laden
             }
 
             RatingScreen(currentHost) { hostRating, foodRating, eveningRating ->
@@ -54,17 +55,12 @@ class RatingActivity : ComponentActivity() {
             .add(rating)
             .addOnSuccessListener {
                 // Erfolg
-                Toast.makeText(this, "Bewertung erfolgreich gespeichert!", Toast.LENGTH_SHORT)
-                    .show()
-                finish() // Optional: Schließe die Activity nach dem Speichern
+                Toast.makeText(this, getString(R.string.rating_saved_success), Toast.LENGTH_SHORT).show() // Erfolgsmeldung
+                finish()
             }
             .addOnFailureListener { e ->
                 // Fehlerbehandlung
-                Toast.makeText(
-                    this,
-                    "Fehler beim Speichern der Bewertung: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, getString(R.string.rating_save_error, e.message), Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -80,7 +76,7 @@ class RatingActivity : ComponentActivity() {
 
         // Bewertungen abrufen, wenn der Screen geladen wird
         LaunchedEffect(currentHost) {
-            if (currentHost != "Lade...") {
+            if (currentHost != getString(R.string.loading_host)) {
                 val averages = fetchAverageRatings(currentHost)
                 averageHostRating = averages[0]
                 averageFoodRating = averages[1]
@@ -109,7 +105,7 @@ class RatingActivity : ComponentActivity() {
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Zurück",
+                                contentDescription = getString(R.string.back_button_description),
                                 tint = Color.Gray
                             )
                         }
@@ -121,7 +117,7 @@ class RatingActivity : ComponentActivity() {
                         ) {
                             // Zeige den aktuellen Gastgeber an
                             Text(
-                                text = "Bewerte den Gastgeber: $currentHost",
+                                text = getString(R.string.rate_host) + ": $currentHost",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = Color(0xFF318DFF),
@@ -141,31 +137,17 @@ class RatingActivity : ComponentActivity() {
                     ) {
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
-                            RatingSlider("Bewerte den Gastgeber", hostRating) { hostRating = it }
+                            RatingSlider(getString(R.string.rate_host), hostRating) { hostRating = it }
                             Spacer(modifier = Modifier.height(24.dp))
-                            RatingSlider("Bewerte das Essen", foodRating) { foodRating = it }
+                            RatingSlider(getString(R.string.rate_food), foodRating) { foodRating = it }
                             Spacer(modifier = Modifier.height(24.dp))
-                            RatingSlider("Bewerte den Abend", eveningRating) { eveningRating = it }
+                            RatingSlider(getString(R.string.rate_evening), eveningRating) { eveningRating = it }
                             Spacer(modifier = Modifier.height(48.dp))
 
-                            // Durchschnittsbewertungen anzeigen
-                            Text(
-                                "Durchschnittliche Bewertungen:",
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF318DFF)  // Gleiche Farbe wie die Überschrift
-                            )
-                            Text(
-                                "Gastgeber: ${"%.2f".format(averageHostRating)}",
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "Essen: ${"%.2f".format(averageFoodRating)}",
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "Abend: ${"%.2f".format(averageEveningRating)}",
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(getString(R.string.average_ratings_label), fontWeight = FontWeight.Bold, color = Color(0xFF318DFF))
+                            Text(getString(R.string.average_host_rating, averageHostRating), fontWeight = FontWeight.Bold)
+                            Text(getString(R.string.average_food_rating, averageFoodRating), fontWeight = FontWeight.Bold)
+                            Text(getString(R.string.average_evening_rating, averageEveningRating), fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -185,7 +167,7 @@ class RatingActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),  // Button über die gesamte Breite
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF318DFF))
                         ) {
-                            Text("Bewertung abschicken", color = Color.White)
+                            Text(getString(R.string.submit_rating_button), color = Color.White) 
                         }
                     }
                 }
