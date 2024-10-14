@@ -20,13 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.iu.boardgamerapp.R
 import kotlinx.coroutines.tasks.await
-
-data class Rating(
-    val hostName: String = "",  // Name des Gastgebers
-    val hostRating: Int = 0,    // Bewertung für den Gastgeber (0-5)
-    val foodRating: Int = 0,     // Bewertung für das Essen (0-5)
-    val eveningRating: Int = 0   // Bewertung für den Abend (0-5)
-)
+import com.iu.boardgamerapp.ui.datamodel.Rating
 
 class RatingActivity : ComponentActivity() {
     private val db = FirebaseFirestore.getInstance() // Firestore Instanz
