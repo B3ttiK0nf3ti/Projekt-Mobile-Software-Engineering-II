@@ -17,7 +17,7 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
             removeExpiredEvents()
             Result.success()
         } catch (e: Exception) {
-            Log.e("ExpiredEventWorker", applicationContext.getString(R.string.worker_error, e.message), e) // Verwende String-Ressource
+            Log.e("ExpiredEventWorker", applicationContext.getString(R.string.worker_error, e.message), e)
             Result.failure()
         }
     }

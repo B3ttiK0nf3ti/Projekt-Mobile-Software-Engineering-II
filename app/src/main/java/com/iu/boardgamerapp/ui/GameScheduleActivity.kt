@@ -80,7 +80,7 @@ class GameScheduleActivity : ComponentActivity() {
 
             var isLoading by remember { mutableStateOf(true) }
 
-            // Use LaunchedEffect to fetch calendar events safely within the Composable
+            // LaunchedEffect verwenden, um Kalenderereignisse sicher innerhalb des Composable abzurufen
             LaunchedEffect(Unit) {
                 isLoading = true
                 fetchCalendarEvents(calendarEvents)
@@ -204,7 +204,7 @@ class GameScheduleActivity : ComponentActivity() {
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Buttons to pick start and end date/time
+                            // Buttons zur Auswahl von start/end date/time
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -426,7 +426,6 @@ class GameScheduleActivity : ComponentActivity() {
         val documentRef = firestore.collection("calendarEvents").document()
         val eventId = documentRef.id // Die neu generierte ID
 
-        // We assign the Firestore ID to the event
         event.id = documentRef.id
 
         // Speichere das Ereignis in Firestore
