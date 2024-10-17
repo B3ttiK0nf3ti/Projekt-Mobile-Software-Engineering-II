@@ -221,7 +221,7 @@ class GameScheduleActivity : ComponentActivity() {
 
                             Button(
                                 onClick = {
-                                    // Check if the title or location is empty
+                                    // Check ob title/location leer ist
                                     if (title.isBlank() || location.isBlank()) {
                                         Toast.makeText(
                                             this@GameScheduleActivity,
@@ -230,7 +230,7 @@ class GameScheduleActivity : ComponentActivity() {
                                         ).show()
                                         return@Button
                                     }
-                                    // Check if the start date is in the future
+                                    // Check ob start date in der Zukunft liegt
                                     val currentTime = Calendar.getInstance().time
                                     if (selectedDateStart.time.before(currentTime)) {
                                         Toast.makeText(
@@ -246,10 +246,10 @@ class GameScheduleActivity : ComponentActivity() {
                                         "Start time (millis): ${selectedDateStart.timeInMillis}"
                                     )
 
-                                    // Set the end time to be 2 hours later than the start time
+                                    // end time wird auf 2 Stunden nach start time gesetzt
                                     val selectedDateEnd = Calendar.getInstance().apply {
                                         timeInMillis = selectedDateStart.timeInMillis
-                                        add(Calendar.HOUR_OF_DAY, 2) // Add 2 hours
+                                        add(Calendar.HOUR_OF_DAY, 2) // + 2 Stunden für die Endzeit
                                     }
 
                                     val newEvent = CalendarEvent(
@@ -260,7 +260,7 @@ class GameScheduleActivity : ComponentActivity() {
                                         endTime = Timestamp(selectedDateEnd.time) // Benutze die berechnete Endzeit in der lokalen Zeitzone
                                     )
 
-                                    // Save the event to Firestore
+                                    // Speicherung des event in Firestore
                                     saveEventToFirestore(newEvent, calendarEvents) { eventId ->
                                         Log.d(
                                             "GameScheduleActivity",
