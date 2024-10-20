@@ -50,7 +50,7 @@ class HostRotationActivity : ComponentActivity() {
         // Initialisiere ViewModel
         val databaseHelper = AppDatabaseHelper()
         val repository = UserRepository()
-        val factory = MainViewModelFactory(repository)
+        val factory = MainViewModelFactory(repository, databaseHelper, this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
 
         setContent {

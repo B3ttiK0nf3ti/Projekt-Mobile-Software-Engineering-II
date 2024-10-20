@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
         val databaseHelper = AppDatabaseHelper()
-        val userRepository = UserRepository(databaseHelper)
-        MainViewModelFactory(userRepository, databaseHelper, this)
+        val userRepository = UserRepository()
+        MainViewModelFactory(userRepository)
     }
 
     private lateinit var hostRotationActivityResultLauncher: ActivityResultLauncher<Intent>

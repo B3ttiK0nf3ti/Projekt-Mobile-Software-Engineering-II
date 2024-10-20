@@ -7,35 +7,12 @@ import com.google.firebase.ktx.Firebase
 import com.iu.boardgamerapp.ui.datamodel.User
 
 
-class UserRepository(private val databaseHelper: AppDatabaseHelper) {
+class UserRepository {
     private val db: FirebaseFirestore = Firebase.firestore
 
     companion object {
         private const val TAG = "UserRepository"
         const val USERS_COLLECTION = "user"
-    }
-
-    // Benutzer hinzufügen
-    fun addUser(name: String, callback: (Boolean) -> Unit) {
-        databaseHelper.checkUserExists(name) { exists -> // Verwendung von databaseHelper
-            if (exists) {
-                callback(false) // Benutzer existiert bereits
-            } else {
-                val userData = hashMapOf(
-                    "name" to name,
-                    "isHost" to false // Standardmäßig kein Host
-                )
-                db.collection(USERS_COLLECTION).add(userData)
-                    .addOnSuccessListener { documentReference ->
-                        Log.d(TAG, "Benutzer hinzugefügt: $name mit ID: ${documentReference.id}")
-                        callback(true) // Benutzer erfolgreich hinzugefügt
-                    }
-                    .addOnFailureListener { e ->
-                        Log.w(TAG, "Fehler beim Hinzufügen des Benutzers", e)
-                        callback(false) // Fehler beim Hinzufügen
-                    }
-            }
-        }
     }
 
     fun getUserByName(name: String, callback: (User?) -> Unit) {
@@ -59,7 +36,6 @@ class UserRepository(private val databaseHelper: AppDatabaseHelper) {
                 callback(null) // Rückgabe von null im Fehlerfall
             }
     }
-
 
     // Alle Benutzer abrufen
     // In UserRepository
