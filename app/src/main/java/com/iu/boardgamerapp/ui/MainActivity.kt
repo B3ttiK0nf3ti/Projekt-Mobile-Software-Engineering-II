@@ -1,13 +1,7 @@
 package com.iu.boardgamerapp.ui
 
-import com.iu.boardgamerapp.ui.GameScheduleActivity
-import android.Manifest
-import android.app.AlertDialog
-import android.content.ContentResolver
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.provider.CalendarContract
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -15,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,21 +17,16 @@ import com.iu.boardgamerapp.data.UserRepository
 import com.iu.boardgamerapp.di.MainViewModelFactory
 import com.iu.boardgamerapp.ui.components.MainScreen
 import com.iu.boardgamerapp.ui.theme.BoardGamerAppTheme
-import androidx.core.content.ContextCompat
 import androidx.work.OneTimeWorkRequestBuilder
-import com.iu.boardgamerapp.ui.HostRotationActivity
-import com.iu.boardgamerapp.ui.MainViewModel
-import java.util.*
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.WorkRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.iu.boardgamerapp.ui.datamodel.CalendarEvent
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
-        val databaseHelper = AppDatabaseHelper(this)
+        val databaseHelper = AppDatabaseHelper()
         val userRepository = UserRepository(databaseHelper)
         MainViewModelFactory(userRepository, databaseHelper, this)
     }
@@ -80,7 +68,6 @@ class MainActivity : ComponentActivity() {
                     composable("home") {
                         MainScreen(
                             viewModel = viewModel,
-                            navController = navController,
                             onNavigateToGameSchedule = {
                                 startActivity(
                                     Intent(
@@ -136,7 +123,7 @@ class MainActivity : ComponentActivity() {
     }
 
         private fun checkUserLoggedIn() {
-        val databaseHelper = AppDatabaseHelper(this)
+        val databaseHelper = AppDatabaseHelper()
         databaseHelper.getUserWithFirebaseID { username ->
             if (username == null) {
                 // Nutzer ist nicht eingeloggt, starte LoginActivity

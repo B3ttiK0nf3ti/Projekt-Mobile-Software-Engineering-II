@@ -48,7 +48,7 @@ class HostRotationActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Initialisiere ViewModel
-        val databaseHelper = AppDatabaseHelper(this)
+        val databaseHelper = AppDatabaseHelper()
         val repository = UserRepository(databaseHelper)
         val factory = MainViewModelFactory(repository, databaseHelper, this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]

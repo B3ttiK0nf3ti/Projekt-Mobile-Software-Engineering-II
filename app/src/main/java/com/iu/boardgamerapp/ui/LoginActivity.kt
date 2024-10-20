@@ -26,7 +26,7 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        databaseHelper = AppDatabaseHelper(this)
+        databaseHelper = AppDatabaseHelper()
 
         setContent {
             BoardGamerAppTheme {

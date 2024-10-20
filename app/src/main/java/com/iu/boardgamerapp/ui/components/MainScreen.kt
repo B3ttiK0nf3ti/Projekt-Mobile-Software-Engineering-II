@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.iu.boardgamerapp.ui.ChatActivity
 import com.iu.boardgamerapp.ui.GameChoosingActivity
 import com.iu.boardgamerapp.ui.MainViewModel
@@ -39,7 +38,6 @@ import com.iu.boardgamerapp.ui.RatingActivity
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
-    navController: NavController,
     onNavigateToGameSchedule: () -> Unit,
     onNavigateToHostRotation: () -> Unit
 ) {

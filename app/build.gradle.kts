@@ -61,8 +61,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-core:1.7.2")
     implementation("androidx.compose.material:material-icons-extended:1.7.2")
-    implementation("androidx.compose.runtime:runtime-livedata:1.7.2") // oder die neueste Version
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.6")  // oder die neueste Version
+    implementation("androidx.compose.runtime:runtime-livedata:1.7.2")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.6")
     implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.30.1")
@@ -71,16 +71,16 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.foundation.android)  // oder die neueste Version
+    implementation(libs.androidx.foundation.android)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation(libs.androidx.appcompat)
-    implementation("androidx.appcompat:appcompat:1.6.1") // Aktuelle Version verwenden
-    implementation("androidx.compose.ui:ui:1.4.0") // Beispiel für Compose
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.compose.ui:ui:1.4.0")
     implementation("androidx.activity:activity-compose:1.7.0")
     implementation(libs.firebase.database.ktx)
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.layout.android)
-    implementation(libs.androidx.ui.test.android) // Beispiel für Activity Compose
+    implementation(libs.androidx.ui.test.android)
     implementation("com.google.firebase:firebase-firestore:24.0.0")
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.work.runtime.ktx)

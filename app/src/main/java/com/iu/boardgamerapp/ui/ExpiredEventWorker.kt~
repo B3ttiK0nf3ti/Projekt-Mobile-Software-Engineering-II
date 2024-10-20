@@ -43,7 +43,7 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
                                     "ExpiredEventWorker",
                                     applicationContext.getString(R.string.event_removed_log, document.id)
                                 )
-                                rotateHostForDeletedEvent() // Wechselt den Gastgeber
+                                rotateHostForDeletedEvent(event) // Wechselt den Gastgeber
                             }
                             .addOnFailureListener { e ->
                                 Log.e(
@@ -60,7 +60,7 @@ class ExpiredEventWorker(appContext: Context, workerParams: WorkerParameters) : 
     }
 
 
-    private fun rotateHostForDeletedEvent() {
+    private fun rotateHostForDeletedEvent(event: CalendarEvent) {
         val userList = mutableListOf<User>() // Liste zur Speicherung der Benutzer
 
         // Hier sicherstellen, dass die Sammlung "user" heißt

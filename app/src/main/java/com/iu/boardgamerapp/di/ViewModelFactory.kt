@@ -15,7 +15,7 @@ class MainViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(userRepository, databaseHelper, context) as T // Verwende databaseHelper, nicht einen neuen
+            return MainViewModel(userRepository) as T // Verwende databaseHelper, nicht einen neuen
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -1,5 +1,6 @@
 package com.iu.boardgamerapp.ui
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -64,7 +65,7 @@ class GameChoosingActivity : ComponentActivity() {
 
         firestore = FirebaseFirestore.getInstance()
         appDatabaseHelper =
-            AppDatabaseHelper(this) // Or however you initialize your AppDatabaseHelper
+            AppDatabaseHelper() // Or however you initialize your AppDatabaseHelper
 
         setContent {
             BoardGamerAppTheme {
@@ -258,6 +259,7 @@ fun GameChoosingScreen(
     }
 }
 
+@SuppressLint("UseOfNonLambdaOffsetOverload")
 @Composable
 fun GameItem(
     game: Game,

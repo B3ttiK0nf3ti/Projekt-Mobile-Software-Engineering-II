@@ -37,7 +37,7 @@ class ChatActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         firestore = FirebaseFirestore.getInstance()
-        dbHelper = AppDatabaseHelper(this)
+        dbHelper = AppDatabaseHelper()
 
         dbHelper.getUserWithFirebaseID { userName ->
             val name = userName ?: "Unknown"
@@ -192,7 +192,7 @@ fun ChatScreen(userName: String, onBack: () -> Unit) {
                                         user = userName,
                                         message = newMessage,
                                         timestamp = timestamp,
-                                        firebaseInstallationId = firebaseId // Hier speichern wir die Installation ID
+                                        firebaseInstallationId = firebaseId // Speichern der Installation ID
                                     )
 
                                     chatMessages = chatMessages + newMessageObj
